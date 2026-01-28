@@ -1,0 +1,172 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Background colors */
+  --bg: 255 255 255;
+  --bg-secondary: 248 250 252;
+  --bg-dark: 15 23 42;
+  --bg-dark-secondary: 30 41 59;
+  
+  /* Foreground colors */
+  --fg: 15 23 42;
+  --fg-secondary: 71 85 105;
+  --fg-muted: 148 163 184;
+  --fg-on-dark: 248 250 252;
+  --fg-on-dark-secondary: 203 213 225;
+  
+  /* Card & surface */
+  --card: 255 255 255;
+  --card-hover: 248 250 252;
+  
+  /* Borders */
+  --border: 226 232 240;
+  --border-dark: 51 65 85;
+  
+  /* Accent colors */
+  --accent: 59 130 246;
+  --accent-hover: 37 99 235;
+  --accent-muted: 219 234 254;
+  
+  /* Secondary accent (emerald) */
+  --accent-2: 16 185 129;
+  --accent-2-hover: 5 150 105;
+  --accent-2-muted: 209 250 229;
+  
+  /* Focus ring */
+  --ring: 59 130 246;
+  --ring-offset: 255 255 255;
+  
+  /* Status colors */
+  --success: 34 197 94;
+  --warning: 245 158 11;
+  --error: 239 68 68;
+  --info: 59 130 246;
+  
+  /* Shadows */
+  --shadow-color: 0 0 0;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv11", "ss01";
+    font-variation-settings: "opsz" 32;
+  }
+  
+  ::selection {
+    @apply bg-accent/20 text-accent-foreground;
+  }
+  
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
+
+@layer components {
+  /* Container utilities */
+  .container-narrow {
+    @apply max-w-3xl mx-auto px-4 sm:px-6;
+  }
+  
+  .container-wide {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  /* Section spacing */
+  .section-padding {
+    @apply py-16 md:py-24 lg:py-32;
+  }
+  
+  .section-padding-sm {
+    @apply py-12 md:py-16 lg:py-20;
+  }
+  
+  /* Gradient backgrounds */
+  .gradient-subtle {
+    background: radial-gradient(ellipse 80% 50% at 50% -20%, rgb(var(--accent) / 0.08), transparent);
+  }
+  
+  .gradient-dark {
+    background: linear-gradient(to bottom right, rgb(var(--bg-dark)), rgb(var(--bg-dark-secondary)));
+  }
+  
+  .gradient-mesh {
+    background-image: 
+      radial-gradient(at 27% 37%, rgb(var(--accent) / 0.05) 0px, transparent 50%),
+      radial-gradient(at 97% 21%, rgb(var(--accent-2) / 0.04) 0px, transparent 50%),
+      radial-gradient(at 52% 99%, rgb(var(--accent) / 0.03) 0px, transparent 50%),
+      radial-gradient(at 10% 29%, rgb(var(--accent-2) / 0.03) 0px, transparent 50%);
+  }
+  
+  /* Grid pattern overlay */
+  .grid-pattern {
+    background-image: linear-gradient(rgb(var(--border) / 0.3) 1px, transparent 1px),
+                      linear-gradient(90deg, rgb(var(--border) / 0.3) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+  
+  /* Prose styles */
+  .prose-custom {
+    @apply text-foreground-secondary leading-relaxed;
+  }
+
+  .prose-custom h1 {
+    @apply text-3xl md:text-4xl lg:text-5xl font-bold text-foreground tracking-tight mb-6;
+  }
+
+  .prose-custom h2 {
+    @apply text-2xl md:text-3xl font-bold text-foreground tracking-tight mb-4;
+  }
+
+  .prose-custom h3 {
+    @apply text-xl md:text-2xl font-semibold text-foreground tracking-tight mb-3;
+  }
+
+  .prose-custom p {
+    @apply mb-4 max-w-prose;
+  }
+
+  .prose-custom ul {
+    @apply list-disc list-outside ml-5 mb-4 space-y-2;
+  }
+
+  .prose-custom ol {
+    @apply list-decimal list-outside ml-5 mb-4 space-y-2;
+  }
+  
+  /* Text balance for headings */
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  /* Animated underline for links */
+  .link-underline {
+    @apply relative;
+  }
+  
+  .link-underline::after {
+    @apply absolute bottom-0 left-0 h-px w-0 bg-current transition-all duration-300 content-[''];
+  }
+  
+  .link-underline:hover::after {
+    @apply w-full;
+  }
+}
