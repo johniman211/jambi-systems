@@ -5,8 +5,10 @@ A production-ready agency website built with Next.js 14, Tailwind CSS, and Supab
 ## Features
 
 - **Public Pages**: Home, Services, About, Contact, Privacy, Terms
+- **Store**: Digital product marketplace with PaySSD payments
 - **Request a System Form**: Multi-step form with validation, spam protection (honeypot + rate limiting)
 - **Admin Dashboard**: View, filter, search, and export submissions
+- **Store Admin**: Manage products, orders, and deployment requests
 - **Email Notifications**: Automatic emails on new submissions via Gmail SMTP
 - **SEO Optimized**: Meta tags, Open Graph, Twitter cards, JSON-LD, sitemap, robots.txt
 - **Responsive Design**: Mobile-first, professional neutral color scheme
@@ -270,6 +272,129 @@ When deploying to Vercel, add these environment variables in the Vercel dashboar
 - `GMAIL_SMTP_USER`
 - `GMAIL_SMTP_APP_PASSWORD`
 - `FORMS_TO_EMAIL`
+- `ADMIN_EMAIL`
+- `PAYSSD_SECRET_KEY`
+- `PAYSSD_WEBHOOK_SECRET`
+
+---
+
+## Store Feature
+
+The store allows you to sell digital products (web systems) with PaySSD payments.
+
+### Store Setup
+
+#### 1. Run Store Migrations
+
+In Supabase SQL Editor, run the migration file:
+```sql
+-- Copy contents of supabase/migrations/002_create_store_tables.sql
+-- Or run the combined file: supabase/store.sql
+```
+
+This creates:
+- `store_products` - Product catalog
+- `store_orders` - Customer orders
+- `store_license_keys` - Generated license keys
+- `store_deploy_requests` - Deployment service requests
+
+#### 2. Create Storage Bucket
+
+In Supabase Dashboard:
+1. Go to **Storage** → **New Bucket**
+2. Name: `store-assets`
+3. Public: **No** (private bucket)
+4. Add policies:
+   - Authenticated users can upload (admin)
+   - Public can read cover images
+   - Signed URLs for deliverables
+
+#### 3. Configure PaySSD Webhook
+
+1. In PaySSD dashboard, add webhook URL:
+   ```
+   https://your-domain.com/api/webhooks/payssd
+   ```
+2. Copy the webhook secret to `PAYSSD_WEBHOOK_SECRET`
+3. Copy your API key to `PAYSSD_SECRET_KEY`
+
+### Store Admin
+
+Access at `/admin/store` (requires admin login)
+
+#### Products Management
+- **List**: View all products with status filters
+- **Create**: Add new product with pricing, description, features
+- **Edit**: Update product details, upload images/deliverables
+- **Publish**: Toggle product visibility in store
+
+#### Orders Management
+- **List**: View all orders with status filters
+- **Details**: Full order info, customer contact, license key
+- **Actions**: Update status, resend emails
+
+#### Deployments Management
+- **List**: View deployment requests
+- **Details**: Customer contact, order info
+- **Actions**: Update status, add notes, mark complete
+
+### Store Pages
+
+| Route | Description |
+|-------|-------------|
+| `/store` | Product listing |
+| `/store/[slug]` | Product detail |
+| `/store/checkout/[slug]` | Checkout form |
+| `/store/success` | Order confirmation |
+| `/store/orders/[token]` | Customer order page |
+| `/store/license` | License info |
+| `/store/terms` | Store terms |
+
+### Adding Products
+
+1. Go to `/admin/store/new`
+2. Fill in:
+   - Name and slug (URL-friendly)
+   - Category
+   - Summary (short) and Description (detailed)
+   - Base price (in cents, e.g., 50000 = $500)
+   - Multi-use license extra price
+   - Deploy add-on price
+   - What's included (list)
+   - Requirements (list)
+   - Demo URL
+   - Support info
+3. Upload:
+   - Cover image (shown in listings)
+   - Gallery images (shown on detail page)
+   - Deliverable ZIP (for download)
+4. Set "Publish" to make visible
+
+### How Downloads Work
+
+1. Customer completes payment via PaySSD
+2. Webhook marks order as paid
+3. License key is generated
+4. Customer accesses `/store/orders/[token]`
+5. Server generates time-limited signed URL for download
+6. Customer clicks download button
+
+### How Deployment Works
+
+1. Customer selects "Deploy for You" at checkout
+2. After payment, deploy request is created
+3. Admin notified via email
+4. Admin contacts customer via phone
+5. Admin updates status: new → in_progress → done
+6. Customer sees status on order page
+
+### Store Emails
+
+Sent automatically:
+- **Buyer**: Payment confirmation + download link
+- **Buyer**: Deployment request confirmation
+- **Admin**: New purchase notification
+- **Admin**: New deployment request
 
 ## License
 

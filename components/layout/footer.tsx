@@ -4,6 +4,7 @@ import { Logo } from '@/components/brand/Logo'
 const footerLinks = {
   main: [
     { href: '/', label: 'Home' },
+    { href: '/store', label: 'Store' },
     { href: '/work', label: 'Work' },
     { href: '/services', label: 'Services' },
     { href: '/pricing', label: 'Pricing' },
@@ -14,6 +15,8 @@ const footerLinks = {
   legal: [
     { href: '/privacy', label: 'Privacy Policy' },
     { href: '/terms', label: 'Terms of Service' },
+    { href: '/store/terms', label: 'Store Terms' },
+    { href: '/store/license', label: 'License Info' },
   ],
 }
 
