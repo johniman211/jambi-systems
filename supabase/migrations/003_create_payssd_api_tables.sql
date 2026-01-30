@@ -121,9 +121,12 @@ ALTER TABLE payssd_payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payssd_webhooks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payssd_webhook_logs ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies
+-- RLS Policies (drop existing first to avoid conflicts)
 
--- Merchants: Users can only see their own merchant profile
+-- Merchants policies
+DROP POLICY IF EXISTS "Users can view own merchant" ON payssd_merchants;
+DROP POLICY IF EXISTS "Users can update own merchant" ON payssd_merchants;
+
 CREATE POLICY "Users can view own merchant"
   ON payssd_merchants FOR SELECT
   TO authenticated
@@ -134,7 +137,11 @@ CREATE POLICY "Users can update own merchant"
   TO authenticated
   USING (user_id = auth.uid());
 
--- API Keys: Only merchant owners can manage their keys
+-- API Keys policies
+DROP POLICY IF EXISTS "Merchants can view own API keys" ON payssd_api_keys;
+DROP POLICY IF EXISTS "Merchants can manage own API keys" ON payssd_api_keys;
+DROP POLICY IF EXISTS "Service can manage all API keys" ON payssd_api_keys;
+
 CREATE POLICY "Merchants can view own API keys"
   ON payssd_api_keys FOR SELECT
   TO authenticated
@@ -145,7 +152,11 @@ CREATE POLICY "Merchants can manage own API keys"
   TO authenticated
   USING (merchant_id IN (SELECT id FROM payssd_merchants WHERE user_id = auth.uid()));
 
--- Payments: Merchants can only see their own payments
+-- Payments policies
+DROP POLICY IF EXISTS "Merchants can view own payments" ON payssd_payments;
+DROP POLICY IF EXISTS "Merchants can manage own payments" ON payssd_payments;
+DROP POLICY IF EXISTS "Service can manage all payments" ON payssd_payments;
+
 CREATE POLICY "Merchants can view own payments"
   ON payssd_payments FOR SELECT
   TO authenticated
@@ -167,7 +178,10 @@ CREATE POLICY "Service can manage all API keys"
   USING (true)
   WITH CHECK (true);
 
--- Webhooks: Merchants can manage their own webhooks
+-- Webhooks policies
+DROP POLICY IF EXISTS "Merchants can manage own webhooks" ON payssd_webhooks;
+DROP POLICY IF EXISTS "Service can manage all webhooks" ON payssd_webhooks;
+
 CREATE POLICY "Merchants can manage own webhooks"
   ON payssd_webhooks FOR ALL
   TO authenticated
@@ -178,7 +192,10 @@ CREATE POLICY "Service can manage all webhooks"
   USING (true)
   WITH CHECK (true);
 
--- Webhook logs: Merchants can view their own logs
+-- Webhook logs policies
+DROP POLICY IF EXISTS "Merchants can view own webhook logs" ON payssd_webhook_logs;
+DROP POLICY IF EXISTS "Service can manage all webhook logs" ON payssd_webhook_logs;
+
 CREATE POLICY "Merchants can view own webhook logs"
   ON payssd_webhook_logs FOR SELECT
   TO authenticated
