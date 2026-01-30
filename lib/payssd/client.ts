@@ -44,6 +44,8 @@ export async function createCheckoutSession(
   }
 
   try {
+    console.log('PaySSD request:', JSON.stringify(request))
+    
     const response = await fetch(`${BASE_URL}/checkout/create`, {
       method: 'POST',
       headers: {
@@ -54,12 +56,45 @@ export async function createCheckoutSession(
     })
 
     const data = await response.json()
+    console.log('PaySSD response:', JSON.stringify(data))
 
     if (!response.ok) {
-      return { success: false, error: data.error || 'Failed to create checkout session' }
+      console.error('PaySSD error response:', data)
+      return { success: false, error: data.error || data.message || 'Failed to create checkout session' }
     }
 
-    return data as CheckoutResponse
+    // Handle different response formats
+    if (data.checkout_session) {
+      return { 
+        success: true, 
+        data: { checkout_session: data.checkout_session }
+      }
+    }
+    
+    if (data.data?.checkout_session) {
+      return data as CheckoutResponse
+    }
+
+    // If response has url directly
+    if (data.url) {
+      return {
+        success: true,
+        data: {
+          checkout_session: {
+            id: data.id || data.reference_code || 'unknown',
+            url: data.url,
+            reference_code: data.reference_code || '',
+            amount: data.amount || request.amount || 0,
+            currency: data.currency || request.currency || 'USD',
+            expires_at: data.expires_at || '',
+            payment_methods: data.payment_methods || {},
+          }
+        }
+      }
+    }
+
+    console.error('Unexpected PaySSD response format:', data)
+    return { success: false, error: 'Unexpected response from payment gateway' }
   } catch (error) {
     console.error('PaySSD checkout error:', error)
     return { success: false, error: 'Payment service unavailable' }
