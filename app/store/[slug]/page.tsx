@@ -3,7 +3,8 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Button, ScrollReveal, Section } from '@/components/ui'
 import { ProductHeroIllustration } from '@/components/illustrations/StoreIllustration'
-import { getProductBySlug, getPublishedProducts } from '@/lib/store/actions'
+import { getProductBySlug } from '@/lib/store/actions'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { formatPrice } from '@/lib/store/types'
 import { getCategoryLabel } from '@/lib/store/validations'
 import { ArrowRight, Check, ExternalLink, Shield, Headphones, Package } from 'lucide-react'
@@ -13,8 +14,13 @@ interface PageProps {
 }
 
 export async function generateStaticParams() {
-  const products = await getPublishedProducts()
-  return products.map((product) => ({
+  const supabase = createAdminClient()
+  const { data: products } = await supabase
+    .from('store_products')
+    .select('slug')
+    .eq('is_published', true)
+  
+  return (products || []).map((product) => ({
     slug: product.slug,
   }))
 }

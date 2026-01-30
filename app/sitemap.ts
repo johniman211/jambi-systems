@@ -1,11 +1,11 @@
 import { MetadataRoute } from 'next'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jambisystems.com'
 
-  // Fetch published store products
-  const supabase = await createClient()
+  // Fetch published store products (use admin client for build-time generation)
+  const supabase = createAdminClient()
   const { data: products } = await supabase
     .from('store_products')
     .select('slug, updated_at')
