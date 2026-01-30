@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { checkoutSchema, type CheckoutInput, productSchema, type ProductInput, deployRequestSchema, type DeployRequestInput } from './validations'
@@ -220,6 +221,9 @@ export async function createProduct(input: ProductInput) {
     return { success: false, error: error.message }
   }
 
+  // Revalidate store pages
+  revalidatePath('/store')
+
   return { success: true, product: data as StoreProduct }
 }
 
@@ -243,6 +247,10 @@ export async function updateProduct(id: string, input: ProductInput) {
     }
     return { success: false, error: error.message }
   }
+
+  // Revalidate store pages to show updated content
+  revalidatePath('/store')
+  revalidatePath(`/store/${data.slug}`)
 
   return { success: true, product: data as StoreProduct }
 }
