@@ -1,6 +1,8 @@
 export type LicenseType = 'single' | 'multi'
 export type DeliveryType = 'download' | 'deploy' | 'both'
-export type OrderStatus = 'pending' | 'matched' | 'confirmed' | 'rejected' | 'expired' | 'paid' | 'failed' | 'refunded'
+export type OrderStatus = 'pending' | 'pending_verification' | 'matched' | 'confirmed' | 'rejected' | 'expired' | 'paid' | 'failed' | 'refunded'
+export type PaymentMethod = 'momo' | 'equity'
+export type ReviewStatus = 'pending' | 'approved' | 'rejected'
 export type DeployRequestStatus = 'new' | 'in_progress' | 'done'
 
 export interface StoreProduct {
@@ -30,6 +32,7 @@ export interface StoreProduct {
 export interface StoreOrder {
   id: string
   product_id: string | null
+  order_code: string
   buyer_name: string | null
   buyer_phone: string
   buyer_email: string | null
@@ -40,12 +43,28 @@ export interface StoreOrder {
   status: OrderStatus
   payment_provider: string
   provider_reference: string | null
-  payssd_payment_id: string | null
-  payssd_reference_code: string | null
   order_access_token: string
   paid_at: string | null
   created_at: string
   product?: StoreProduct
+}
+
+export interface PaymentConfirmation {
+  id: string
+  order_id: string
+  payment_method: PaymentMethod
+  payer_phone: string | null
+  transaction_reference: string
+  amount_cents: number
+  currency: string
+  receipt_path: string | null
+  note: string | null
+  auto_approved: boolean
+  reviewed_by: string | null
+  reviewed_at: string | null
+  review_status: ReviewStatus
+  created_at: string
+  order?: StoreOrder
 }
 
 export interface StoreLicenseKey {
@@ -77,6 +96,7 @@ export interface OrderWithDetails extends Omit<StoreOrder, 'product'> {
   product: StoreProduct | null
   license_key: StoreLicenseKey | null
   deploy_request: StoreDeployRequest | null
+  payment_confirmation?: PaymentConfirmation | null
 }
 
 export function formatPrice(cents: number, currency: string = 'USD'): string {
@@ -125,4 +145,9 @@ export function generateLicenseKey(): string {
     segments.push(segment)
   }
   return segments.join('-')
+}
+
+export function generateOrderCode(): string {
+  const num = Math.floor(10000 + Math.random() * 90000)
+  return `JS-${num}`
 }

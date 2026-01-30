@@ -1,11 +1,11 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Button, ScrollReveal, Section } from '@/components/ui'
+import { Button, ScrollReveal } from '@/components/ui'
 import { OrderIllustration } from '@/components/illustrations/StoreIllustration'
 import { getOrderByToken, getDeliverableSignedUrl } from '@/lib/store/actions'
 import { formatPrice } from '@/lib/store/types'
-import { Download, Clock, CheckCircle, Rocket, Key, ArrowRight } from 'lucide-react'
+import { Download, Clock, CheckCircle, Rocket, Key, Hourglass, XCircle } from 'lucide-react'
 
 interface PageProps {
   params: Promise<{ token: string }>
@@ -27,6 +27,8 @@ export default async function OrderPage({ params }: PageProps) {
   }
 
   const isPaid = order.status === 'paid' || order.status === 'confirmed'
+  const isPendingVerification = order.status === 'pending_verification'
+  const isRejected = order.status === 'rejected'
   const hasDownload = order.delivery_type === 'download' || order.delivery_type === 'both'
   const hasDeploy = order.delivery_type === 'deploy' || order.delivery_type === 'both'
 
@@ -63,25 +65,66 @@ export default async function OrderPage({ params }: PageProps) {
             <div className={`rounded-2xl p-6 mb-8 ${
               isPaid 
                 ? 'bg-green-50 border border-green-200' 
+                : isPendingVerification
+                ? 'bg-blue-50 border border-blue-200'
+                : isRejected
+                ? 'bg-red-50 border border-red-200'
                 : 'bg-amber-50 border border-amber-200'
             }`}>
               <div className="flex items-center gap-3">
                 {isPaid ? (
                   <CheckCircle className="w-6 h-6 text-green-600" />
+                ) : isPendingVerification ? (
+                  <Hourglass className="w-6 h-6 text-blue-600" />
+                ) : isRejected ? (
+                  <XCircle className="w-6 h-6 text-red-600" />
                 ) : (
                   <Clock className="w-6 h-6 text-amber-600" />
                 )}
                 <div>
-                  <h2 className={`font-semibold ${isPaid ? 'text-green-800' : 'text-amber-800'}`}>
-                    {isPaid ? 'Payment Confirmed' : 'Awaiting Payment'}
+                  <h2 className={`font-semibold ${
+                    isPaid ? 'text-green-800' 
+                    : isPendingVerification ? 'text-blue-800'
+                    : isRejected ? 'text-red-800'
+                    : 'text-amber-800'
+                  }`}>
+                    {isPaid 
+                      ? 'Payment Confirmed' 
+                      : isPendingVerification 
+                      ? 'Verifying Payment'
+                      : isRejected
+                      ? 'Payment Rejected'
+                      : 'Awaiting Payment'}
                   </h2>
-                  <p className={`text-sm ${isPaid ? 'text-green-700' : 'text-amber-700'}`}>
+                  <p className={`text-sm ${
+                    isPaid ? 'text-green-700' 
+                    : isPendingVerification ? 'text-blue-700'
+                    : isRejected ? 'text-red-700'
+                    : 'text-amber-700'
+                  }`}>
                     {isPaid 
                       ? `Confirmed on ${order.paid_at ? new Date(order.paid_at).toLocaleDateString() : new Date(order.created_at).toLocaleDateString()}` 
+                      : isPendingVerification
+                      ? 'We received your payment confirmation and are verifying it'
+                      : isRejected
+                      ? 'Your payment could not be verified. Please contact support.'
                       : 'Complete your payment to access your purchase'}
                   </p>
                 </div>
               </div>
+              {!isPaid && !isRejected && (
+                <div className="mt-4 pt-4 border-t border-current/10">
+                  <Link href={`/store/pay/${token}`}>
+                    <Button size="sm" className={
+                      isPendingVerification 
+                        ? 'bg-blue-600 hover:bg-blue-700' 
+                        : 'bg-amber-600 hover:bg-amber-700'
+                    }>
+                      {isPendingVerification ? 'View Payment Status' : 'Complete Payment'}
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </div>
           </ScrollReveal>
 

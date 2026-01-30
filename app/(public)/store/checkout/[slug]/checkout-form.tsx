@@ -1,25 +1,11 @@
 'use client'
 
-import { useState, useTransition, useEffect } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import Script from 'next/script'
 import { Button, Input } from '@/components/ui'
 import { createOrder } from '@/lib/store/actions'
 import { formatPrice, calculateTotal, type StoreProduct, type LicenseType, type DeliveryType } from '@/lib/store/types'
 import { Check, Loader2 } from 'lucide-react'
-
-// Extend Window interface for PaySSD
-declare global {
-  interface Window {
-    Payssd?: {
-      checkout: (options: {
-        productId: string
-        onSuccess?: (payment: any) => void
-        onError?: (error: any) => void
-      }) => void
-    }
-  }
-}
 
 interface CheckoutFormProps {
   product: StoreProduct
@@ -57,13 +43,8 @@ export function CheckoutForm({ product }: CheckoutFormProps) {
         return
       }
 
-      // Redirect directly to PaySSD checkout
-      if (result.checkoutUrl) {
-        window.location.href = result.checkoutUrl
-      } else {
-        // Fallback to success page if checkout URL not available
-        router.push(`/store/success?token=${result.orderToken}`)
-      }
+      // Redirect to payment instructions page
+      router.push(`/store/pay/${result.orderToken}`)
     })
   }
 
@@ -358,10 +339,10 @@ export function CheckoutForm({ product }: CheckoutFormProps) {
         {isPending ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Processing...
+            Creating Order...
           </>
         ) : (
-          `Pay ${formatPrice(total, product.currency)} with PaySSD`
+          `Continue to Payment — ${formatPrice(total, product.currency)}`
         )}
       </Button>
 
