@@ -39,7 +39,7 @@ export function ProductForm({ product }: ProductFormProps) {
   const [newIncludedItem, setNewIncludedItem] = useState('')
   const [newRequirement, setNewRequirement] = useState('')
   const [screenshots, setScreenshots] = useState<string[]>(product?.gallery_image_paths || [])
-  const [payssdPriceId, setPayssdPriceId] = useState(product?.payssd_price_id || '')
+  const [payssdCheckoutUrl, setPayssdCheckoutUrl] = useState(product?.payssd_checkout_url || '')
 
   const generateSlug = (text: string) => {
     return text
@@ -77,7 +77,7 @@ export function ProductForm({ product }: ProductFormProps) {
       whats_included: whatsIncluded.length > 0 ? whatsIncluded : undefined,
       requirements: requirements.length > 0 ? requirements : undefined,
       gallery_image_paths: screenshots.length > 0 ? screenshots : undefined,
-      payssd_price_id: payssdPriceId || undefined,
+      payssd_checkout_url: payssdCheckoutUrl || undefined,
     }
 
     startTransition(async () => {
@@ -464,19 +464,19 @@ export function ProductForm({ product }: ProductFormProps) {
         <h2 className="font-semibold text-foreground mb-4">Payment Integration</h2>
         <div className="space-y-4">
           <div>
-            <label htmlFor="payssd_price_id" className="block text-sm font-medium text-foreground mb-1">
-              PaySSD Price ID
+            <label htmlFor="payssd_checkout_url" className="block text-sm font-medium text-foreground mb-1">
+              PaySSD Checkout URL
             </label>
             <input
-              id="payssd_price_id"
-              type="text"
-              value={payssdPriceId}
-              onChange={(e) => setPayssdPriceId(e.target.value)}
+              id="payssd_checkout_url"
+              type="url"
+              value={payssdCheckoutUrl}
+              onChange={(e) => setPayssdCheckoutUrl(e.target.value)}
               className="w-full px-4 py-2 rounded-lg border border-border bg-background text-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-              placeholder="price_xxxxx"
+              placeholder="https://www.payssd.com/pay/..."
             />
             <p className="text-xs text-foreground-muted mt-1">
-              Get this from PaySSD Dashboard → Products → Your Product. Required for payment.
+              Copy the &quot;Checkout&quot; link from PaySSD Dashboard → Products → Your Product.
             </p>
           </div>
         </div>

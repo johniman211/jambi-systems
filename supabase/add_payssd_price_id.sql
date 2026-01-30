@@ -1,6 +1,6 @@
--- Add payssd_price_id column to store_products table
+-- Add payssd_checkout_url column to store_products table
 ALTER TABLE store_products 
-ADD COLUMN IF NOT EXISTS payssd_price_id TEXT;
+ADD COLUMN IF NOT EXISTS payssd_checkout_url TEXT;
 
 -- Comment for documentation
-COMMENT ON COLUMN store_products.payssd_price_id IS 'PaySSD price ID from dashboard for payment integration';
+COMMENT ON COLUMN store_products.payssd_checkout_url IS 'PaySSD Payment Link URL from dashboard for payment integration';

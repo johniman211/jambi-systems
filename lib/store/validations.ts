@@ -39,7 +39,7 @@ export const productSchema = z.object({
   cover_image_path: z.string().optional(),
   gallery_image_paths: z.array(z.string()).optional(),
   deliverable_path: z.string().optional(),
-  payssd_price_id: z.string().optional(),
+  payssd_checkout_url: z.string().url().optional().or(z.literal('')),
   whats_included: z.array(z.string()).optional(),
   requirements: z.array(z.string()).optional(),
   support_info: z.string().optional(),

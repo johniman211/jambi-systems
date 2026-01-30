@@ -6,7 +6,6 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { checkoutSchema, type CheckoutInput, productSchema, type ProductInput, deployRequestSchema, type DeployRequestInput } from './validations'
 import { calculateTotal, generateOrderToken, generateLicenseKey, type StoreProduct, type StoreOrder, type OrderWithDetails } from './types'
 import { sendStoreEmail } from '@/lib/email/store-emails'
-import { createCheckoutSession } from '@/lib/payssd/client'
 
 export async function getPublishedProducts() {
   const supabase = createAdminClient()
@@ -83,34 +82,25 @@ export async function createOrder(input: CheckoutInput) {
     return { success: false, error: 'Failed to create order' }
   }
 
-  // Create PaySSD checkout session
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jambisystems.com'
-  const checkoutResult = await createCheckoutSession({
-    price_id: product.payssd_price_id || undefined,
-    customer_phone: validated.data.buyer_phone,
-    customer_email: validated.data.buyer_email,
-    success_url: `${siteUrl}/store/success?token=${orderToken}`,
-    cancel_url: `${siteUrl}/store/checkout/${product.slug}`,
-  })
+  // Use PaySSD Payment Link directly from product
+  const checkoutUrl = product.payssd_checkout_url
 
-  if (!checkoutResult.success || !checkoutResult.data) {
-    // Order created but PaySSD failed - still return order token for manual payment
-    console.error('PaySSD checkout error:', checkoutResult.error)
+  if (!checkoutUrl) {
+    console.error('Product not configured with PaySSD checkout URL')
     return {
       success: true,
       order: order as StoreOrder,
       orderToken,
       checkoutUrl: null,
-      paymentError: checkoutResult.error,
+      error: 'Payment not configured for this product'
     }
   }
 
-  // Update order with PaySSD reference and checkout URL
+  // Update order with checkout URL
   await supabase
     .from('store_orders')
-    .update({
-      provider_reference: checkoutResult.data.checkout_session.id,
-      payssd_checkout_url: checkoutResult.data.checkout_session.url,
+    .update({ 
+      payssd_checkout_url: checkoutUrl
     })
     .eq('id', order.id)
 
@@ -118,7 +108,7 @@ export async function createOrder(input: CheckoutInput) {
     success: true,
     order: order as StoreOrder,
     orderToken,
-    checkoutUrl: checkoutResult.data.checkout_session.url,
+    checkoutUrl,
   }
 }
 
