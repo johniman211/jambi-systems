@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { checkoutSchema, type CheckoutInput, productSchema, type ProductInput, deployRequestSchema, type DeployRequestInput } from './validations'
 import { calculateTotal, generateOrderToken, generateLicenseKey, type StoreProduct, type StoreOrder, type OrderWithDetails } from './types'
-import { sendStoreEmail } from '@/lib/email/store-emails'
+import { sendStoreEmail, sendNewProductEmail } from '@/lib/email/store-emails'
 
 export async function getPublishedProducts() {
   const supabase = createAdminClient()
@@ -103,6 +103,20 @@ export async function createOrder(input: CheckoutInput) {
       payssd_checkout_url: checkoutUrl
     })
     .eq('id', order.id)
+
+  // Send order created notifications
+  const orderWithDetails = {
+    ...order,
+    product: product as StoreProduct,
+    license_key: null,
+    deploy_request: null,
+  } as OrderWithDetails
+
+  // Send to admin and buyer
+  await Promise.all([
+    sendStoreEmail('admin_order_created', orderWithDetails),
+    sendStoreEmail('buyer_order_created', orderWithDetails),
+  ])
 
   return {
     success: true,
@@ -210,6 +224,14 @@ export async function createProduct(input: ProductInput) {
 
   // Revalidate store pages
   revalidatePath('/store')
+
+  // Send new product notification to admin
+  await sendNewProductEmail({
+    name: data.name,
+    slug: data.slug,
+    base_price_cents: data.base_price_cents,
+    currency: data.currency,
+  })
 
   return { success: true, product: data as StoreProduct }
 }
