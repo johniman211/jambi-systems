@@ -13,6 +13,7 @@ type StoreEmailType =
   | 'admin_new_purchase'
   | 'admin_deploy_request'
   | 'admin_new_product'
+  | 'admin_payment_pending'
 
 export async function sendStoreEmail(type: StoreEmailType, order: OrderWithDetails) {
   switch (type) {
@@ -31,6 +32,8 @@ export async function sendStoreEmail(type: StoreEmailType, order: OrderWithDetai
       return sendAdminNewPurchaseEmail(order)
     case 'admin_deploy_request':
       return sendAdminDeployRequestEmail(order)
+    case 'admin_payment_pending':
+      return sendAdminPaymentPendingEmail(order)
   }
 }
 
@@ -495,6 +498,60 @@ async function sendAdminDeployRequestEmail(order: OrderWithDetails) {
   await sendEmail({
     to: ADMIN_EMAIL,
     subject: `New Deployment Request: ${productName}`,
+    html,
+  })
+}
+
+async function sendAdminPaymentPendingEmail(order: OrderWithDetails) {
+  const productName = order.product?.name || 'Product'
+  const adminUrl = `${SITE_URL}/admin/store/payments`
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #374151; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="text-align: center; margin-bottom: 32px;">
+        <h1 style="color: #f59e0b; margin: 0;">Payment Verification Needed</h1>
+      </div>
+
+      <div style="background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+        <h2 style="margin: 0 0 8px 0; color: #92400e;">Manual Review Required</h2>
+        <p style="margin: 0; color: #a16207;">A payment confirmation for <strong>${productName}</strong> needs manual verification.</p>
+        <p style="margin: 8px 0 0 0; color: #a16207;">Order: <strong>${order.order_code}</strong> - ${formatPrice(order.amount_cents, order.currency)}</p>
+      </div>
+
+      <div style="background-color: #f9fafb; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+        <h3 style="margin: 0 0 12px 0; color: #374151;">Buyer Details</h3>
+        <table style="width: 100%;">
+          <tr>
+            <td style="padding: 4px 0; color: #6b7280;">Name:</td>
+            <td style="padding: 4px 0;">${order.buyer_name || 'Not provided'}</td>
+          </tr>
+          <tr>
+            <td style="padding: 4px 0; color: #6b7280;">Phone:</td>
+            <td style="padding: 4px 0; font-weight: 600;">${order.buyer_phone}</td>
+          </tr>
+          <tr>
+            <td style="padding: 4px 0; color: #6b7280;">Email:</td>
+            <td style="padding: 4px 0;">${order.buyer_email || 'Not provided'}</td>
+          </tr>
+        </table>
+      </div>
+
+      <div style="text-align: center;">
+        <a href="${adminUrl}" style="display: inline-block; background-color: #f59e0b; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">Review Payment</a>
+      </div>
+    </body>
+    </html>
+  `
+
+  await sendEmail({
+    to: ADMIN_EMAIL,
+    subject: `Payment Verification Needed: ${order.order_code} - ${formatPrice(order.amount_cents, order.currency)}`,
     html,
   })
 }
