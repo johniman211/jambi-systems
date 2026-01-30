@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils'
 interface SectionProps {
   children: ReactNode
   className?: string
+  id?: string
   variant?: 'default' | 'secondary' | 'dark'
   size?: 'sm' | 'md' | 'lg'
   container?: 'wide' | 'narrow' | 'none'
@@ -12,6 +13,7 @@ interface SectionProps {
 export function Section({
   children,
   className,
+  id,
   variant = 'default',
   size = 'md',
   container = 'wide',
@@ -35,7 +37,7 @@ export function Section({
   }
 
   return (
-    <section className={cn(variants[variant], sizes[size], className)}>
+    <section id={id} className={cn(variants[variant], sizes[size], className)}>
       <div className={containers[container]}>{children}</div>
     </section>
   )
