@@ -14,6 +14,7 @@ import {
   Store,
   LogOut,
   ExternalLink,
+  CreditCard,
 } from 'lucide-react'
 
 interface AdminSidebarProps {
@@ -33,7 +34,9 @@ const sidebarLinks = [
       { href: '/admin/store', label: 'Products', icon: Package, exact: true },
       { href: '/admin/store/new', label: 'Add Product', icon: Store },
       { href: '/admin/store/orders', label: 'Orders', icon: ShoppingCart },
+      { href: '/admin/store/payments', label: 'Payments', icon: CreditCard },
       { href: '/admin/store/deployments', label: 'Deployments', icon: Rocket },
+      { href: '/admin/store/settings', label: 'Settings', icon: Settings },
     ],
   },
   {

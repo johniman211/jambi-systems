@@ -3,30 +3,32 @@
 import { useState } from 'react'
 import { Phone, Building2, DollarSign } from 'lucide-react'
 import { CopyButton } from './copy-button'
+import { PaymentAccounts } from '@/lib/store/actions'
 
 interface PaymentInstructionsProps {
   orderCode: string
   amountUsd: number
   amountSsp: number
   exchangeRate: number
+  accounts: PaymentAccounts
 }
 
 type PaymentTab = 'momo' | 'equity_ssp' | 'equity_usd'
 
-export function PaymentInstructions({ orderCode, amountUsd, amountSsp, exchangeRate }: PaymentInstructionsProps) {
+export function PaymentInstructions({ orderCode, amountUsd, amountSsp, exchangeRate, accounts }: PaymentInstructionsProps) {
   const [activeTab, setActiveTab] = useState<PaymentTab>('momo')
 
-  // Payment details
-  const momoNumber = '+211929385157'
-  const momoAccountName = 'John Jambi'
+  // Payment details from database
+  const momoNumber = accounts.momo_number
+  const momoAccountName = accounts.momo_name
   
-  const equitySspAccountNumber = '2101111359346'
-  const equitySspAccountName = 'John Jambi'
+  const equitySspAccountNumber = accounts.equity_ssp_account
+  const equitySspAccountName = accounts.equity_ssp_name
   
-  const equityUsdAccountNumber = '2002111332379'
-  const equityUsdAccountName = 'John Jambi'
+  const equityUsdAccountNumber = accounts.equity_usd_account
+  const equityUsdAccountName = accounts.equity_usd_name
   
-  const bankName = 'Equity Bank'
+  const bankName = accounts.bank_name
 
   return (
     <div className="bg-card rounded-2xl border border-border overflow-hidden mb-6">

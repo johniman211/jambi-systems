@@ -939,7 +939,67 @@ export async function updateExchangeRate(rate: number) {
     })
 
   if (error) {
-    return { success: false, error: 'Failed to update exchange rate' }
+    console.error('Exchange rate update error:', error)
+    return { success: false, error: `Failed to update exchange rate: ${error.message}` }
+  }
+
+  revalidatePath('/admin/store/settings')
+  revalidatePath('/store')
+  return { success: true }
+}
+
+// Payment Account Settings
+export interface PaymentAccounts {
+  momo_number: string
+  momo_name: string
+  equity_ssp_account: string
+  equity_ssp_name: string
+  equity_usd_account: string
+  equity_usd_name: string
+  bank_name: string
+}
+
+const DEFAULT_ACCOUNTS: PaymentAccounts = {
+  momo_number: '+211929385157',
+  momo_name: 'John Jambi',
+  equity_ssp_account: '2101111359346',
+  equity_ssp_name: 'John Jambi',
+  equity_usd_account: '2002111332379',
+  equity_usd_name: 'John Jambi',
+  bank_name: 'Equity Bank',
+}
+
+export async function getPaymentAccounts(): Promise<PaymentAccounts> {
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('store_settings')
+    .select('value')
+    .eq('key', 'payment_accounts')
+    .single()
+
+  if (error || !data) {
+    return DEFAULT_ACCOUNTS
+  }
+
+  return data.value as PaymentAccounts
+}
+
+export async function updatePaymentAccounts(accounts: PaymentAccounts) {
+  const adminClient = createAdminClient()
+  
+  const { error } = await adminClient
+    .from('store_settings')
+    .upsert({
+      key: 'payment_accounts',
+      value: accounts,
+      updated_at: new Date().toISOString(),
+    }, {
+      onConflict: 'key'
+    })
+
+  if (error) {
+    console.error('Payment accounts update error:', error)
+    return { success: false, error: `Failed to update payment accounts: ${error.message}` }
   }
 
   revalidatePath('/admin/store/settings')

@@ -1,6 +1,7 @@
-import { getExchangeRate } from '@/lib/store/actions'
-import { Settings } from 'lucide-react'
+import { getExchangeRate, getPaymentAccounts } from '@/lib/store/actions'
+import { Settings, AlertTriangle } from 'lucide-react'
 import { ExchangeRateForm } from './exchange-rate-form'
+import { PaymentAccountsForm } from './payment-accounts-form'
 
 export const metadata = {
   title: 'Store Settings - Admin',
@@ -8,7 +9,10 @@ export const metadata = {
 }
 
 export default async function StoreSettingsPage() {
-  const exchangeRate = await getExchangeRate()
+  const [exchangeRate, paymentAccounts] = await Promise.all([
+    getExchangeRate(),
+    getPaymentAccounts()
+  ])
 
   return (
     <div className="space-y-6">
@@ -21,6 +25,17 @@ export default async function StoreSettingsPage() {
         <p className="text-foreground-secondary mt-1">
           Manage exchange rates and payment configuration
         </p>
+      </div>
+
+      {/* Migration Notice */}
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+        <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-medium text-amber-800">Database Migration Required</p>
+          <p className="text-xs text-amber-700 mt-1">
+            If you see "Failed to update" errors, run the migration file <code className="bg-amber-100 px-1 rounded">006_exchange_rate_settings.sql</code> in your Supabase SQL Editor.
+          </p>
+        </div>
       </div>
 
       {/* Exchange Rate Card */}
@@ -37,39 +52,15 @@ export default async function StoreSettingsPage() {
         />
       </div>
 
-      {/* Payment Accounts Info */}
+      {/* Payment Accounts */}
       <div className="bg-card rounded-xl border border-border p-6">
         <h2 className="font-semibold text-foreground mb-4">Payment Accounts</h2>
-        <p className="text-sm text-foreground-secondary mb-4">
-          The following accounts are configured to receive payments:
+        <p className="text-sm text-foreground-secondary mb-6">
+          Configure the accounts where customers will send payments.
+          These details are shown on the payment page.
         </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* MoMo */}
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <h3 className="font-medium text-amber-800 mb-2">MTN MoMo</h3>
-            <p className="text-sm text-amber-700">+211929385157</p>
-            <p className="text-xs text-amber-600 mt-1">John Jambi</p>
-          </div>
-
-          {/* Equity SSP */}
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <h3 className="font-medium text-green-800 mb-2">Equity Bank (SSP)</h3>
-            <p className="text-sm text-green-700 font-mono">2101111359346</p>
-            <p className="text-xs text-green-600 mt-1">John Jambi</p>
-          </div>
-
-          {/* Equity USD */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="font-medium text-blue-800 mb-2">Equity Bank (USD)</h3>
-            <p className="text-sm text-blue-700 font-mono">2002111332379</p>
-            <p className="text-xs text-blue-600 mt-1">John Jambi</p>
-          </div>
-        </div>
-
-        <p className="text-xs text-foreground-muted mt-4">
-          To change payment accounts, update the values in the payment-instructions.tsx file.
-        </p>
+        <PaymentAccountsForm accounts={paymentAccounts} />
       </div>
     </div>
   )

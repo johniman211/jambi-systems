@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { getOrderByToken, getExchangeRate } from '@/lib/store/actions'
+import { getOrderByToken, getExchangeRate, getPaymentAccounts } from '@/lib/store/actions'
 import { formatPrice } from '@/lib/store/types'
 import { ScrollReveal } from '@/components/ui'
 import { Clock, CheckCircle, AlertCircle, Hourglass } from 'lucide-react'
@@ -21,9 +21,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function PaymentPage({ params }: PageProps) {
   const { token } = await params
-  const [order, exchangeRateData] = await Promise.all([
+  const [order, exchangeRateData, paymentAccounts] = await Promise.all([
     getOrderByToken(token),
-    getExchangeRate()
+    getExchangeRate(),
+    getPaymentAccounts()
   ])
 
   if (!order) {
@@ -188,6 +189,7 @@ export default async function PaymentPage({ params }: PageProps) {
                   amountUsd={amountUsd}
                   amountSsp={amountSsp}
                   exchangeRate={exchangeRate}
+                  accounts={paymentAccounts}
                 />
 
                 {/* Payment Confirmation Form */}
