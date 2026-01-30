@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard,
   Package,
@@ -11,10 +12,13 @@ import {
   FileText,
   Settings,
   Store,
-  CreditCard,
-  Users,
-  BarChart3,
+  LogOut,
+  ExternalLink,
 } from 'lucide-react'
+
+interface AdminSidebarProps {
+  userEmail?: string
+}
 
 const sidebarLinks = [
   {
@@ -41,8 +45,10 @@ const sidebarLinks = [
   },
 ]
 
-export function AdminSidebar() {
+export function AdminSidebar({ userEmail }: AdminSidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
+  const supabase = createClient()
 
   const isActive = (href: string, exact?: boolean) => {
     if (exact) {
@@ -51,9 +57,26 @@ export function AdminSidebar() {
     return pathname.startsWith(href)
   }
 
+  async function handleSignOut() {
+    await supabase.auth.signOut()
+    router.push('/admin/login')
+    router.refresh()
+  }
+
   return (
-    <aside className="w-64 min-h-[calc(100vh-4rem)] bg-white border-r border-primary-200 p-4">
-      <nav className="space-y-6">
+    <aside className="w-64 min-h-screen bg-white border-r border-primary-200 flex flex-col">
+      {/* Header */}
+      <div className="p-4 border-b border-primary-100">
+        <Link href="/admin" className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-primary-900 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-sm">J</span>
+          </div>
+          <span className="font-bold text-primary-900">Jambi Admin</span>
+        </Link>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 p-4 space-y-6 overflow-y-auto">
         {sidebarLinks.map((section) => (
           <div key={section.title}>
             <h3 className="px-3 text-xs font-semibold text-primary-400 uppercase tracking-wider mb-2">
@@ -83,17 +106,41 @@ export function AdminSidebar() {
             </ul>
           </div>
         ))}
+
+        {/* View Site Link */}
+        <div>
+          <Link
+            href="/"
+            target="_blank"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-primary-600 hover:bg-primary-100 hover:text-primary-900 transition-all"
+          >
+            <ExternalLink className="w-5 h-5" />
+            View Site
+          </Link>
+        </div>
       </nav>
 
-      {/* Quick Stats Card */}
-      <div className="mt-8 p-4 bg-gradient-to-br from-primary-900 to-primary-800 rounded-xl text-white">
-        <div className="flex items-center gap-2 mb-2">
-          <BarChart3 className="w-4 h-4" />
-          <span className="text-xs font-medium opacity-80">Quick Tip</span>
+      {/* User Section */}
+      <div className="p-4 border-t border-primary-100">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
+            <span className="text-primary-600 font-medium text-sm">
+              {userEmail?.charAt(0).toUpperCase() || 'A'}
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-primary-900 truncate">
+              {userEmail || 'Admin'}
+            </p>
+          </div>
         </div>
-        <p className="text-sm opacity-90">
-          Add products in the Store section to start selling on your website.
-        </p>
+        <button
+          onClick={handleSignOut}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-all"
+        >
+          <LogOut className="w-4 h-4" />
+          Sign Out
+        </button>
       </div>
     </aside>
   )

@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { AdminNav } from './admin-nav'
 import { AdminSidebar } from './admin-sidebar'
 
 export default async function AdminLayout({
@@ -16,12 +15,9 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-primary-50">
-      <AdminNav userEmail={user.email} />
-      <div className="flex">
-        <AdminSidebar />
-        <main className="flex-1 p-8">{children}</main>
-      </div>
+    <div className="min-h-screen bg-primary-50 flex">
+      <AdminSidebar userEmail={user.email} />
+      <main className="flex-1 p-8 overflow-auto">{children}</main>
     </div>
   )
 }
