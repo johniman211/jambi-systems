@@ -23,6 +23,10 @@ export default async function OrderDetailPage({ params }: PageProps) {
 
   const statusColors: Record<string, string> = {
     pending: 'bg-amber-100 text-amber-700 border-amber-200',
+    matched: 'bg-blue-100 text-blue-700 border-blue-200',
+    confirmed: 'bg-green-100 text-green-700 border-green-200',
+    rejected: 'bg-red-100 text-red-700 border-red-200',
+    expired: 'bg-gray-100 text-gray-700 border-gray-200',
     paid: 'bg-green-100 text-green-700 border-green-200',
     failed: 'bg-red-100 text-red-700 border-red-200',
     refunded: 'bg-gray-100 text-gray-700 border-gray-200',
@@ -109,9 +113,9 @@ export default async function OrderDetailPage({ params }: PageProps) {
                 <p className="font-medium text-foreground uppercase">{order.payment_provider}</p>
               </div>
               <div>
-                <p className="text-sm text-foreground-muted">Provider Reference</p>
+                <p className="text-sm text-foreground-muted">Payment Reference</p>
                 <p className="font-medium text-foreground font-mono text-sm">
-                  {order.provider_reference || 'N/A'}
+                  {order.payssd_reference_code || order.provider_reference || 'N/A'}
                 </p>
               </div>
               <div>

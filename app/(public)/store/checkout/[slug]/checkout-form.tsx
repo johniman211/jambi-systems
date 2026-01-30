@@ -57,11 +57,11 @@ export function CheckoutForm({ product }: CheckoutFormProps) {
         return
       }
 
-      // Redirect to PaySSD checkout if URL available
+      // Redirect directly to PaySSD checkout
       if (result.checkoutUrl) {
         window.location.href = result.checkoutUrl
       } else {
-        // Fallback to success page if PaySSD unavailable (order still created)
+        // Fallback to success page if checkout URL not available
         router.push(`/store/success?token=${result.orderToken}`)
       }
     })

@@ -12,6 +12,10 @@ export default async function AdminOrdersPage() {
 
   const statusColors: Record<string, string> = {
     pending: 'bg-amber-100 text-amber-700',
+    matched: 'bg-blue-100 text-blue-700',
+    confirmed: 'bg-green-100 text-green-700',
+    rejected: 'bg-red-100 text-red-700',
+    expired: 'bg-gray-100 text-gray-700',
     paid: 'bg-green-100 text-green-700',
     failed: 'bg-red-100 text-red-700',
     refunded: 'bg-gray-100 text-gray-700',
@@ -31,9 +35,9 @@ export default async function AdminOrdersPage() {
           <p className="text-2xl font-bold text-foreground">{orders.length}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
-          <p className="text-foreground-secondary text-sm">Paid</p>
+          <p className="text-foreground-secondary text-sm">Confirmed</p>
           <p className="text-2xl font-bold text-green-600">
-            {orders.filter((o) => o.status === 'paid').length}
+            {orders.filter((o) => o.status === 'confirmed' || o.status === 'paid').length}
           </p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
@@ -46,7 +50,7 @@ export default async function AdminOrdersPage() {
           <p className="text-foreground-secondary text-sm">Total Revenue</p>
           <p className="text-2xl font-bold text-accent">
             {formatPrice(
-              orders.filter((o) => o.status === 'paid').reduce((sum, o) => sum + o.amount_cents, 0),
+              orders.filter((o) => o.status === 'confirmed' || o.status === 'paid').reduce((sum, o) => sum + o.amount_cents, 0),
               'USD'
             )}
           </p>

@@ -43,14 +43,30 @@ export async function createCheckoutSession(
     return { success: false, error: 'Payment gateway not configured' }
   }
 
-  // PaySSD requires price_id for API checkout
-  if (!request.price_id) {
-    console.error('PaySSD requires price_id - product not configured for PaySSD')
-    return { success: false, error: 'Product not configured for PaySSD payment' }
+  // Either price_id or amount is required
+  if (!request.price_id && !request.amount) {
+    console.error('PaySSD requires either price_id or amount')
+    return { success: false, error: 'Payment amount not specified' }
   }
 
   try {
     console.log('PaySSD request:', JSON.stringify(request))
+    
+    // Build request body - use price_id if available, otherwise use amount
+    const requestBody: Record<string, any> = {
+      customer_phone: request.customer_phone,
+      customer_email: request.customer_email,
+      success_url: request.success_url,
+      cancel_url: request.cancel_url,
+      metadata: request.metadata,
+    }
+
+    if (request.price_id) {
+      requestBody.price_id = request.price_id
+    } else {
+      requestBody.amount = request.amount
+      requestBody.currency = request.currency || 'SSP'
+    }
     
     const response = await fetch(`${BASE_URL}/checkout/create`, {
       method: 'POST',
@@ -58,13 +74,7 @@ export async function createCheckoutSession(
         'Authorization': `Bearer ${PAYSSD_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        price_id: request.price_id,
-        customer_phone: request.customer_phone,
-        customer_email: request.customer_email,
-        success_url: request.success_url,
-        cancel_url: request.cancel_url,
-      }),
+      body: JSON.stringify(requestBody),
     })
 
     const text = await response.text()

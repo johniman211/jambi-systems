@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { checkoutSchema, type CheckoutInput, productSchema, type ProductInput, deployRequestSchema, type DeployRequestInput } from './validations'
 import { calculateTotal, generateOrderToken, generateLicenseKey, type StoreProduct, type StoreOrder, type OrderWithDetails } from './types'
 import { sendStoreEmail, sendNewProductEmail } from '@/lib/email/store-emails'
+import { createCheckoutSession } from '@/lib/payssd/client'
 
 export async function getPublishedProducts() {
   const supabase = createAdminClient()
@@ -57,8 +58,12 @@ export async function createOrder(input: CheckoutInput) {
     validated.data.delivery_type
   )
 
+  // Convert cents to whole amount for PaySSD
+  const amount = totalCents / 100
+
   const orderToken = generateOrderToken()
 
+  // Create the order first
   const { data: order, error: orderError } = await supabase
     .from('store_orders')
     .insert({
@@ -82,25 +87,46 @@ export async function createOrder(input: CheckoutInput) {
     return { success: false, error: 'Failed to create order' }
   }
 
-  // Use PaySSD Payment Link directly from product
-  const checkoutUrl = product.payssd_checkout_url
+  // Get site URL for success/cancel redirects
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
 
-  if (!checkoutUrl) {
-    console.error('Product not configured with PaySSD checkout URL')
-    return {
-      success: true,
-      order: order as StoreOrder,
+  // Create PaySSD checkout session - redirects user to PaySSD hosted checkout
+  const checkoutResponse = await createCheckoutSession({
+    amount: amount,
+    currency: product.currency,
+    customer_phone: validated.data.buyer_phone,
+    customer_email: validated.data.buyer_email,
+    success_url: `${siteUrl}/store/success?token=${orderToken}`,
+    cancel_url: `${siteUrl}/store/checkout/${product.slug}`,
+    metadata: {
+      order_id: order.id,
+      order_token: orderToken,
+      product_id: product.id,
+      product_name: product.name,
+      license_type: validated.data.license_type,
+      delivery_type: validated.data.delivery_type,
+    },
+  })
+
+  if (!checkoutResponse.success || !checkoutResponse.data?.checkout_session?.url) {
+    console.error('PaySSD checkout error:', checkoutResponse.error)
+    // Order created but payment failed - still return order token so user can retry
+    return { 
+      success: false, 
+      error: checkoutResponse.error || 'Failed to create payment session',
       orderToken,
-      checkoutUrl: null,
-      error: 'Payment not configured for this product'
     }
   }
 
-  // Update order with checkout URL
+  const checkoutUrl = checkoutResponse.data.checkout_session.url
+  const referenceCode = checkoutResponse.data.checkout_session.reference_code
+
+  // Update order with PaySSD reference
   await supabase
     .from('store_orders')
-    .update({ 
-      payssd_checkout_url: checkoutUrl
+    .update({
+      payssd_reference_code: referenceCode,
+      provider_reference: checkoutResponse.data.checkout_session.id,
     })
     .eq('id', order.id)
 
@@ -112,11 +138,11 @@ export async function createOrder(input: CheckoutInput) {
     deploy_request: null,
   } as OrderWithDetails
 
-  // Send to admin and buyer
-  await Promise.all([
+  // Send to admin and buyer (fire and forget)
+  Promise.all([
     sendStoreEmail('admin_order_created', orderWithDetails),
     sendStoreEmail('buyer_order_created', orderWithDetails),
-  ])
+  ]).catch(console.error)
 
   return {
     success: true,
@@ -159,7 +185,7 @@ export async function getDeliverableSignedUrl(orderId: string, productId: string
     .eq('id', orderId)
     .single()
 
-  if (!order || order.status !== 'paid') return null
+  if (!order || (order.status !== 'paid' && order.status !== 'confirmed')) return null
   if (order.delivery_type !== 'download' && order.delivery_type !== 'both') return null
 
   const { data: product } = await adminClient
@@ -465,5 +491,133 @@ export async function updateDeployRequest(id: string, input: DeployRequestInput)
     return { success: false, error: error.message }
   }
 
+  return { success: true }
+}
+
+export async function confirmPayment(orderId: string) {
+  const adminClient = createAdminClient()
+  
+  // Get the order with payment info
+  const { data: order, error: orderError } = await adminClient
+    .from('store_orders')
+    .select('*, product:store_products(*)')
+    .eq('id', orderId)
+    .single()
+
+  if (orderError || !order) {
+    return { success: false, error: 'Order not found' }
+  }
+
+  if (order.status === 'confirmed' || order.status === 'paid') {
+    return { success: false, error: 'Payment already confirmed' }
+  }
+
+  const now = new Date().toISOString()
+
+  // Update order status
+  const { error: updateOrderError } = await adminClient
+    .from('store_orders')
+    .update({
+      status: 'confirmed',
+      paid_at: now,
+    })
+    .eq('id', orderId)
+
+  if (updateOrderError) {
+    return { success: false, error: 'Failed to update order' }
+  }
+
+  // Update payssd payment if exists
+  if (order.payssd_payment_id) {
+    await adminClient
+      .from('payssd_payments')
+      .update({
+        status: 'confirmed',
+        confirmed_at: now,
+      })
+      .eq('id', order.payssd_payment_id)
+  }
+
+  // Generate license key
+  const licenseKey = generateLicenseKey()
+  await adminClient
+    .from('store_license_keys')
+    .insert({
+      order_id: orderId,
+      license_key: licenseKey,
+    })
+
+  // Create deploy request if needed
+  if (order.delivery_type === 'deploy' || order.delivery_type === 'both') {
+    await adminClient
+      .from('store_deploy_requests')
+      .insert({
+        order_id: orderId,
+        status: 'new',
+      })
+  }
+
+  // Get complete order for emails
+  const completeOrder = await getOrderById(orderId)
+  if (completeOrder) {
+    // Send emails
+    try {
+      if (completeOrder.buyer_email) {
+        await sendStoreEmail('buyer_receipt', completeOrder)
+      }
+      await sendStoreEmail('admin_new_purchase', completeOrder)
+    } catch (emailError) {
+      console.error('Failed to send emails:', emailError)
+    }
+  }
+
+  revalidatePath('/admin/store/orders')
+  return { success: true }
+}
+
+export async function rejectPayment(orderId: string) {
+  const adminClient = createAdminClient()
+  
+  // Get the order
+  const { data: order, error: orderError } = await adminClient
+    .from('store_orders')
+    .select('*')
+    .eq('id', orderId)
+    .single()
+
+  if (orderError || !order) {
+    return { success: false, error: 'Order not found' }
+  }
+
+  if (order.status === 'confirmed' || order.status === 'paid') {
+    return { success: false, error: 'Cannot reject a confirmed payment' }
+  }
+
+  const now = new Date().toISOString()
+
+  // Update order status
+  const { error: updateError } = await adminClient
+    .from('store_orders')
+    .update({
+      status: 'rejected',
+    })
+    .eq('id', orderId)
+
+  if (updateError) {
+    return { success: false, error: 'Failed to update order' }
+  }
+
+  // Update payssd payment if exists
+  if (order.payssd_payment_id) {
+    await adminClient
+      .from('payssd_payments')
+      .update({
+        status: 'rejected',
+        rejected_at: now,
+      })
+      .eq('id', order.payssd_payment_id)
+  }
+
+  revalidatePath('/admin/store/orders')
   return { success: true }
 }

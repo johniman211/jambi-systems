@@ -29,7 +29,7 @@ export default async function SuccessPage({ searchParams }: PageProps) {
     redirect('/store')
   }
 
-  const isPaid = order.status === 'paid'
+  const isPaid = order.status === 'paid' || order.status === 'confirmed'
   const hasDownload = order.delivery_type === 'download' || order.delivery_type === 'both'
   const hasDeploy = order.delivery_type === 'deploy' || order.delivery_type === 'both'
 
@@ -167,18 +167,9 @@ export default async function SuccessPage({ searchParams }: PageProps) {
                 <p className="text-amber-700 text-sm mb-4">
                   Complete your payment via PaySSD to access your purchase.
                 </p>
-                {order.payssd_checkout_url ? (
-                  <a href={order.payssd_checkout_url} target="_blank" rel="noopener noreferrer">
-                    <Button className="bg-amber-600 hover:bg-amber-700">
-                      Complete Payment
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  </a>
-                ) : (
-                  <p className="text-amber-600 text-sm">
-                    Payment link unavailable. Please contact support.
-                  </p>
-                )}
+                <p className="text-amber-600 text-sm">
+                  Your payment is being processed. This page will update automatically when confirmed.
+                </p>
               </div>
             </ScrollReveal>
           )}

@@ -26,7 +26,7 @@ export default async function OrderPage({ params }: PageProps) {
     notFound()
   }
 
-  const isPaid = order.status === 'paid'
+  const isPaid = order.status === 'paid' || order.status === 'confirmed'
   const hasDownload = order.delivery_type === 'download' || order.delivery_type === 'both'
   const hasDeploy = order.delivery_type === 'deploy' || order.delivery_type === 'both'
 
@@ -77,7 +77,7 @@ export default async function OrderPage({ params }: PageProps) {
                   </h2>
                   <p className={`text-sm ${isPaid ? 'text-green-700' : 'text-amber-700'}`}>
                     {isPaid 
-                      ? `Paid on ${new Date(order.paid_at!).toLocaleDateString()}` 
+                      ? `Confirmed on ${order.paid_at ? new Date(order.paid_at).toLocaleDateString() : new Date(order.created_at).toLocaleDateString()}` 
                       : 'Complete your payment to access your purchase'}
                   </p>
                 </div>

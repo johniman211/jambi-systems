@@ -1,6 +1,6 @@
 export type LicenseType = 'single' | 'multi'
 export type DeliveryType = 'download' | 'deploy' | 'both'
-export type OrderStatus = 'pending' | 'paid' | 'failed' | 'refunded'
+export type OrderStatus = 'pending' | 'matched' | 'confirmed' | 'rejected' | 'expired' | 'paid' | 'failed' | 'refunded'
 export type DeployRequestStatus = 'new' | 'in_progress' | 'done'
 
 export interface StoreProduct {
@@ -40,7 +40,8 @@ export interface StoreOrder {
   status: OrderStatus
   payment_provider: string
   provider_reference: string | null
-  payssd_checkout_url: string | null
+  payssd_payment_id: string | null
+  payssd_reference_code: string | null
   order_access_token: string
   paid_at: string | null
   created_at: string
