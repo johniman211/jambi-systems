@@ -8,7 +8,7 @@ import { sendStoreEmail } from '@/lib/email/store-emails'
 import { createCheckoutSession } from '@/lib/payssd/client'
 
 export async function getPublishedProducts() {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { data, error } = await supabase
     .from('store_products')
     .select('*')
@@ -20,7 +20,7 @@ export async function getPublishedProducts() {
 }
 
 export async function getProductBySlug(slug: string) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { data, error } = await supabase
     .from('store_products')
     .select('*')
@@ -267,6 +267,48 @@ export async function updateProductImages(id: string, field: 'cover_image_path' 
     .from('store_products')
     .update({ [field]: value })
     .eq('id', id)
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  return { success: true }
+}
+
+export async function uploadProductImage(formData: FormData) {
+  const file = formData.get('file') as File
+  const folder = formData.get('folder') as string || 'images'
+
+  if (!file) {
+    return { success: false, error: 'No file provided' }
+  }
+
+  const supabase = await createClient()
+  
+  // Generate unique filename
+  const ext = file.name.split('.').pop()
+  const filename = `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`
+
+  const { error } = await supabase.storage
+    .from('store-assets')
+    .upload(filename, file, {
+      cacheControl: '3600',
+      upsert: false,
+    })
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  return { success: true, path: filename }
+}
+
+export async function deleteProductImage(path: string) {
+  const supabase = await createClient()
+  
+  const { error } = await supabase.storage
+    .from('store-assets')
+    .remove([path])
 
   if (error) {
     return { success: false, error: error.message }

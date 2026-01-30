@@ -1,21 +1,26 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { createProduct, updateProduct, deleteProduct } from '@/lib/store/actions'
+import { createProduct, updateProduct, deleteProduct, uploadProductImage, deleteProductImage } from '@/lib/store/actions'
 import { PRODUCT_CATEGORIES } from '@/lib/store/validations'
 import type { StoreProduct } from '@/lib/store/types'
-import { Loader2, Trash2, Plus, X } from 'lucide-react'
+import { Loader2, Trash2, Plus, X, Upload, Image as ImageIcon } from 'lucide-react'
 
 interface ProductFormProps {
   product?: StoreProduct
 }
+
+const MAX_SCREENSHOTS = 5
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 
 export function ProductForm({ product }: ProductFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [name, setName] = useState(product?.name || '')
   const [slug, setSlug] = useState(product?.slug || '')
@@ -33,6 +38,7 @@ export function ProductForm({ product }: ProductFormProps) {
   const [requirements, setRequirements] = useState<string[]>(product?.requirements || [])
   const [newIncludedItem, setNewIncludedItem] = useState('')
   const [newRequirement, setNewRequirement] = useState('')
+  const [screenshots, setScreenshots] = useState<string[]>(product?.gallery_image_paths || [])
 
   const generateSlug = (text: string) => {
     return text
@@ -69,6 +75,7 @@ export function ProductForm({ product }: ProductFormProps) {
       is_published: isPublished,
       whats_included: whatsIncluded.length > 0 ? whatsIncluded : undefined,
       requirements: requirements.length > 0 ? requirements : undefined,
+      gallery_image_paths: screenshots.length > 0 ? screenshots : undefined,
     }
 
     startTransition(async () => {
@@ -120,6 +127,54 @@ export function ProductForm({ product }: ProductFormProps) {
 
   const removeRequirement = (index: number) => {
     setRequirements(requirements.filter((_, i) => i !== index))
+  }
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    if (screenshots.length >= MAX_SCREENSHOTS) {
+      setError(`Maximum ${MAX_SCREENSHOTS} screenshots allowed`)
+      return
+    }
+
+    setUploadingImage(true)
+    setError(null)
+
+    try {
+      const file = files[0]
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('folder', 'screenshots')
+
+      const result = await uploadProductImage(formData)
+      
+      if (!result.success) {
+        setError(result.error || 'Failed to upload image')
+        return
+      }
+
+      if (result.path) {
+        setScreenshots([...screenshots, result.path])
+      }
+    } catch (err) {
+      setError('Failed to upload image')
+    } finally {
+      setUploadingImage(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
+  const handleRemoveScreenshot = async (index: number) => {
+    const path = screenshots[index]
+    setScreenshots(screenshots.filter((_, i) => i !== index))
+    
+    // Optionally delete from storage
+    if (path) {
+      await deleteProductImage(path)
+    }
   }
 
   return (
@@ -346,6 +401,59 @@ export function ProductForm({ product }: ProductFormProps) {
               <Plus className="w-4 h-4" />
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Screenshots */}
+      <div className="bg-card rounded-xl border border-border p-6">
+        <h2 className="font-semibold text-foreground mb-4">
+          Screenshots ({screenshots.length}/{MAX_SCREENSHOTS})
+        </h2>
+        <p className="text-sm text-foreground-secondary mb-4">
+          Upload up to {MAX_SCREENSHOTS} screenshots of your product. Recommended size: 1280x720 or 1920x1080.
+        </p>
+        
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+          {screenshots.map((path, index) => (
+            <div key={index} className="relative group aspect-video bg-background-secondary rounded-lg overflow-hidden border border-border">
+              <img
+                src={`${SUPABASE_URL}/storage/v1/object/public/store-assets/${path}`}
+                alt={`Screenshot ${index + 1}`}
+                className="w-full h-full object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => handleRemoveScreenshot(index)}
+                className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/50 text-white text-xs rounded">
+                {index + 1}
+              </div>
+            </div>
+          ))}
+          
+          {screenshots.length < MAX_SCREENSHOTS && (
+            <label className="aspect-video bg-background-secondary rounded-lg border-2 border-dashed border-border hover:border-accent cursor-pointer flex flex-col items-center justify-center transition-colors">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
+                disabled={uploadingImage}
+              />
+              {uploadingImage ? (
+                <Loader2 className="w-8 h-8 text-accent animate-spin" />
+              ) : (
+                <>
+                  <Upload className="w-8 h-8 text-foreground-muted mb-2" />
+                  <span className="text-sm text-foreground-muted">Add Screenshot</span>
+                </>
+              )}
+            </label>
+          )}
         </div>
       </div>
 
