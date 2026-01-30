@@ -249,7 +249,15 @@ export async function submitPaymentConfirmation(input: PaymentConfirmationInput)
       payment_confirmation: confirmation,
     } as OrderWithDetails
 
-    sendStoreEmail('admin_payment_pending', orderWithDetails).catch(console.error)
+    // Send emails to both admin and buyer
+    try {
+      await Promise.all([
+        sendStoreEmail('admin_payment_pending', orderWithDetails),
+        sendStoreEmail('buyer_payment_submitted', orderWithDetails),
+      ])
+    } catch (emailError) {
+      console.error('Failed to send payment notification emails:', emailError)
+    }
 
     return {
       success: true,
@@ -843,14 +851,18 @@ export async function confirmPayment(orderId: string) {
   // Get complete order for emails
   const completeOrder = await getOrderById(orderId)
   if (completeOrder) {
-    // Send emails
+    // Send emails to both buyer and admin
     try {
+      const emailPromises = [
+        sendStoreEmail('admin_new_purchase', completeOrder),
+      ]
       if (completeOrder.buyer_email) {
-        await sendStoreEmail('buyer_receipt', completeOrder)
+        emailPromises.push(sendStoreEmail('buyer_receipt', completeOrder))
+        emailPromises.push(sendStoreEmail('buyer_payment_approved', completeOrder))
       }
-      await sendStoreEmail('admin_new_purchase', completeOrder)
+      await Promise.all(emailPromises)
     } catch (emailError) {
-      console.error('Failed to send emails:', emailError)
+      console.error('Failed to send payment confirmation emails:', emailError)
     }
   }
 
@@ -862,10 +874,10 @@ export async function confirmPayment(orderId: string) {
 export async function rejectPayment(orderId: string) {
   const adminClient = createAdminClient()
   
-  // Get the order
+  // Get the order with product info for email
   const { data: order, error: orderError } = await adminClient
     .from('store_orders')
-    .select('*')
+    .select('*, product:store_products(*)')
     .eq('id', orderId)
     .single()
 
@@ -899,6 +911,23 @@ export async function rejectPayment(orderId: string) {
       reviewed_at: now,
     })
     .eq('order_id', orderId)
+
+  // Send rejection email to buyer
+  const orderWithDetails = {
+    ...order,
+    product: order.product,
+    license_key: null,
+    deploy_request: null,
+    payment_confirmation: null,
+  } as OrderWithDetails
+
+  if (orderWithDetails.buyer_email) {
+    try {
+      await sendStoreEmail('buyer_payment_rejected', orderWithDetails)
+    } catch (emailError) {
+      console.error('Failed to send rejection email:', emailError)
+    }
+  }
 
   revalidatePath('/admin/store/orders')
   revalidatePath('/admin/store/payments')

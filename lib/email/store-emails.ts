@@ -9,6 +9,9 @@ type StoreEmailType =
   | 'buyer_order_created'
   | 'buyer_receipt'
   | 'buyer_deploy_request'
+  | 'buyer_payment_submitted'
+  | 'buyer_payment_approved'
+  | 'buyer_payment_rejected'
   | 'admin_order_created'
   | 'admin_new_purchase'
   | 'admin_deploy_request'
@@ -16,24 +19,38 @@ type StoreEmailType =
   | 'admin_payment_pending'
 
 export async function sendStoreEmail(type: StoreEmailType, order: OrderWithDetails) {
-  switch (type) {
-    case 'buyer_order_created':
-      if (!order.buyer_email) return
-      return sendBuyerOrderCreatedEmail(order)
-    case 'buyer_receipt':
-      if (!order.buyer_email) return
-      return sendBuyerReceiptEmail(order)
-    case 'buyer_deploy_request':
-      if (!order.buyer_email) return
-      return sendBuyerDeployRequestEmail(order)
-    case 'admin_order_created':
-      return sendAdminOrderCreatedEmail(order)
-    case 'admin_new_purchase':
-      return sendAdminNewPurchaseEmail(order)
-    case 'admin_deploy_request':
-      return sendAdminDeployRequestEmail(order)
-    case 'admin_payment_pending':
-      return sendAdminPaymentPendingEmail(order)
+  try {
+    switch (type) {
+      case 'buyer_order_created':
+        if (!order.buyer_email) return
+        return await sendBuyerOrderCreatedEmail(order)
+      case 'buyer_receipt':
+        if (!order.buyer_email) return
+        return await sendBuyerReceiptEmail(order)
+      case 'buyer_deploy_request':
+        if (!order.buyer_email) return
+        return await sendBuyerDeployRequestEmail(order)
+      case 'buyer_payment_submitted':
+        if (!order.buyer_email) return
+        return await sendBuyerPaymentSubmittedEmail(order)
+      case 'buyer_payment_approved':
+        if (!order.buyer_email) return
+        return await sendBuyerPaymentApprovedEmail(order)
+      case 'buyer_payment_rejected':
+        if (!order.buyer_email) return
+        return await sendBuyerPaymentRejectedEmail(order)
+      case 'admin_order_created':
+        return await sendAdminOrderCreatedEmail(order)
+      case 'admin_new_purchase':
+        return await sendAdminNewPurchaseEmail(order)
+      case 'admin_deploy_request':
+        return await sendAdminDeployRequestEmail(order)
+      case 'admin_payment_pending':
+        return await sendAdminPaymentPendingEmail(order)
+    }
+  } catch (error) {
+    console.error(`Failed to send ${type} email:`, error)
+    throw error
   }
 }
 
@@ -498,6 +515,148 @@ async function sendAdminDeployRequestEmail(order: OrderWithDetails) {
   await sendEmail({
     to: ADMIN_EMAIL,
     subject: `New Deployment Request: ${productName}`,
+    html,
+  })
+}
+
+async function sendBuyerPaymentSubmittedEmail(order: OrderWithDetails) {
+  const productName = order.product?.name || 'Product'
+  const orderUrl = `${SITE_URL}/store/orders/${order.order_access_token}`
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #374151; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="text-align: center; margin-bottom: 32px;">
+        <h1 style="color: #f59e0b; margin: 0;">Payment Confirmation Received</h1>
+      </div>
+
+      <div style="background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+        <h2 style="margin: 0 0 8px 0; color: #92400e;">Verifying Your Payment</h2>
+        <p style="margin: 0; color: #a16207;">We've received your payment confirmation for <strong>${productName}</strong>.</p>
+        <p style="margin: 8px 0 0 0; color: #a16207;">Order: <strong>${order.order_code}</strong> - ${formatPrice(order.amount_cents, order.currency)}</p>
+      </div>
+
+      <p style="margin-bottom: 24px;">
+        Our team is now verifying your payment. This usually takes <strong>5-30 minutes</strong> during business hours.
+        You'll receive another email once your payment is confirmed.
+      </p>
+
+      <div style="text-align: center; margin-bottom: 24px;">
+        <a href="${orderUrl}" style="display: inline-block; background-color: #f59e0b; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">Check Order Status</a>
+      </div>
+
+      <p style="font-size: 14px; color: #6b7280;">
+        If you have any questions, please contact us at support@jambisystems.com
+      </p>
+    </body>
+    </html>
+  `
+
+  await sendEmail({
+    to: order.buyer_email!,
+    subject: `Payment Received - Verifying Order ${order.order_code}`,
+    html,
+  })
+}
+
+async function sendBuyerPaymentApprovedEmail(order: OrderWithDetails) {
+  const productName = order.product?.name || 'Product'
+  const orderUrl = `${SITE_URL}/store/orders/${order.order_access_token}`
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #374151; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="text-align: center; margin-bottom: 32px;">
+        <h1 style="color: #10b981; margin: 0;">Payment Approved! 🎉</h1>
+      </div>
+
+      <div style="background-color: #d1fae5; border: 1px solid #10b981; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+        <h2 style="margin: 0 0 8px 0; color: #065f46;">Your Order is Complete</h2>
+        <p style="margin: 0; color: #047857;">Your payment for <strong>${productName}</strong> has been verified and approved!</p>
+        <p style="margin: 8px 0 0 0; color: #047857;">Order: <strong>${order.order_code}</strong></p>
+      </div>
+
+      <p style="margin-bottom: 24px;">
+        Thank you for your purchase! You can now access your product and any associated license keys from your order page.
+      </p>
+
+      <div style="text-align: center; margin-bottom: 24px;">
+        <a href="${orderUrl}" style="display: inline-block; background-color: #10b981; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">View Your Order</a>
+      </div>
+
+      <p style="font-size: 14px; color: #6b7280;">
+        If you need any help, please contact us at support@jambisystems.com
+      </p>
+    </body>
+    </html>
+  `
+
+  await sendEmail({
+    to: order.buyer_email!,
+    subject: `Payment Approved - ${productName} Ready!`,
+    html,
+  })
+}
+
+async function sendBuyerPaymentRejectedEmail(order: OrderWithDetails) {
+  const productName = order.product?.name || 'Product'
+  const paymentUrl = `${SITE_URL}/store/pay/${order.order_access_token}`
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #374151; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="text-align: center; margin-bottom: 32px;">
+        <h1 style="color: #ef4444; margin: 0;">Payment Could Not Be Verified</h1>
+      </div>
+
+      <div style="background-color: #fee2e2; border: 1px solid #ef4444; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+        <h2 style="margin: 0 0 8px 0; color: #991b1b;">Verification Issue</h2>
+        <p style="margin: 0; color: #b91c1c;">We were unable to verify your payment for <strong>${productName}</strong>.</p>
+        <p style="margin: 8px 0 0 0; color: #b91c1c;">Order: <strong>${order.order_code}</strong></p>
+      </div>
+
+      <p style="margin-bottom: 16px;">
+        This could happen for several reasons:
+      </p>
+      <ul style="margin-bottom: 24px; color: #6b7280;">
+        <li>The payment amount didn't match the order total</li>
+        <li>The transaction reference couldn't be found</li>
+        <li>The payment was made to a different account</li>
+      </ul>
+
+      <p style="margin-bottom: 24px;">
+        If you believe this is an error, please contact us with your payment receipt and we'll help resolve this.
+      </p>
+
+      <div style="text-align: center; margin-bottom: 24px;">
+        <a href="${paymentUrl}" style="display: inline-block; background-color: #ef4444; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">Try Payment Again</a>
+      </div>
+
+      <p style="font-size: 14px; color: #6b7280;">
+        Need help? Contact us at support@jambisystems.com
+      </p>
+    </body>
+    </html>
+  `
+
+  await sendEmail({
+    to: order.buyer_email!,
+    subject: `Payment Issue - Order ${order.order_code}`,
     html,
   })
 }
