@@ -70,7 +70,7 @@ export interface CheckoutFormData {
   buyer_email?: string
 }
 
-export interface OrderWithDetails extends StoreOrder {
+export interface OrderWithDetails extends Omit<StoreOrder, 'product'> {
   product: StoreProduct | null
   license_key: StoreLicenseKey | null
   deploy_request: StoreDeployRequest | null
