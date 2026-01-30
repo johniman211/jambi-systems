@@ -39,6 +39,7 @@ export function ProductForm({ product }: ProductFormProps) {
   const [newIncludedItem, setNewIncludedItem] = useState('')
   const [newRequirement, setNewRequirement] = useState('')
   const [screenshots, setScreenshots] = useState<string[]>(product?.gallery_image_paths || [])
+  const [payssdPriceId, setPayssdPriceId] = useState(product?.payssd_price_id || '')
 
   const generateSlug = (text: string) => {
     return text
@@ -76,6 +77,7 @@ export function ProductForm({ product }: ProductFormProps) {
       whats_included: whatsIncluded.length > 0 ? whatsIncluded : undefined,
       requirements: requirements.length > 0 ? requirements : undefined,
       gallery_image_paths: screenshots.length > 0 ? screenshots : undefined,
+      payssd_price_id: payssdPriceId || undefined,
     }
 
     startTransition(async () => {
@@ -454,6 +456,29 @@ export function ProductForm({ product }: ProductFormProps) {
               )}
             </label>
           )}
+        </div>
+      </div>
+
+      {/* Payment Integration */}
+      <div className="bg-card rounded-xl border border-border p-6">
+        <h2 className="font-semibold text-foreground mb-4">Payment Integration</h2>
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="payssd_price_id" className="block text-sm font-medium text-foreground mb-1">
+              PaySSD Price ID
+            </label>
+            <input
+              id="payssd_price_id"
+              type="text"
+              value={payssdPriceId}
+              onChange={(e) => setPayssdPriceId(e.target.value)}
+              className="w-full px-4 py-2 rounded-lg border border-border bg-background text-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              placeholder="price_xxxxx"
+            />
+            <p className="text-xs text-foreground-muted mt-1">
+              Get this from PaySSD Dashboard → Products → Your Product. Required for payment.
+            </p>
+          </div>
         </div>
       </div>
 

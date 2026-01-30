@@ -1,11 +1,25 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Script from 'next/script'
 import { Button, Input } from '@/components/ui'
 import { createOrder } from '@/lib/store/actions'
 import { formatPrice, calculateTotal, type StoreProduct, type LicenseType, type DeliveryType } from '@/lib/store/types'
 import { Check, Loader2 } from 'lucide-react'
+
+// Extend Window interface for PaySSD
+declare global {
+  interface Window {
+    Payssd?: {
+      checkout: (options: {
+        productId: string
+        onSuccess?: (payment: any) => void
+        onError?: (error: any) => void
+      }) => void
+    }
+  }
+}
 
 interface CheckoutFormProps {
   product: StoreProduct

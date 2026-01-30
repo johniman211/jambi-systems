@@ -86,15 +86,11 @@ export async function createOrder(input: CheckoutInput) {
   // Create PaySSD checkout session
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jambisystems.com'
   const checkoutResult = await createCheckoutSession({
-    amount: totalCents,
-    currency: product.currency,
+    price_id: product.payssd_price_id || undefined,
     customer_phone: validated.data.buyer_phone,
     customer_email: validated.data.buyer_email,
     success_url: `${siteUrl}/store/success?token=${orderToken}`,
     cancel_url: `${siteUrl}/store/checkout/${product.slug}`,
-    metadata: {
-      order_id: order.id,
-    },
   })
 
   if (!checkoutResult.success || !checkoutResult.data) {

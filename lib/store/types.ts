@@ -21,6 +21,7 @@ export interface StoreProduct {
   whats_included: string[] | null
   requirements: string[] | null
   support_info: string | null
+  payssd_price_id: string | null
   is_published: boolean
   created_at: string
   updated_at: string

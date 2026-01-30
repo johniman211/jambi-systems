@@ -43,6 +43,12 @@ export async function createCheckoutSession(
     return { success: false, error: 'Payment gateway not configured' }
   }
 
+  // PaySSD requires price_id for API checkout
+  if (!request.price_id) {
+    console.error('PaySSD requires price_id - product not configured for PaySSD')
+    return { success: false, error: 'Product not configured for PaySSD payment' }
+  }
+
   try {
     console.log('PaySSD request:', JSON.stringify(request))
     
@@ -52,10 +58,24 @@ export async function createCheckoutSession(
         'Authorization': `Bearer ${PAYSSD_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(request),
+      body: JSON.stringify({
+        price_id: request.price_id,
+        customer_phone: request.customer_phone,
+        customer_email: request.customer_email,
+        success_url: request.success_url,
+        cancel_url: request.cancel_url,
+      }),
     })
 
-    const data = await response.json()
+    const text = await response.text()
+    
+    // Check if response is JSON
+    if (!text.startsWith('{') && !text.startsWith('[')) {
+      console.error('PaySSD returned non-JSON:', text.substring(0, 200))
+      return { success: false, error: 'Payment service error - please try again' }
+    }
+
+    const data = JSON.parse(text)
     console.log('PaySSD response:', JSON.stringify(data))
 
     if (!response.ok) {
@@ -63,16 +83,13 @@ export async function createCheckoutSession(
       return { success: false, error: data.error || data.message || 'Failed to create checkout session' }
     }
 
-    // Handle different response formats
-    if (data.checkout_session) {
-      return { 
-        success: true, 
-        data: { checkout_session: data.checkout_session }
-      }
-    }
-    
+    // Handle response format
     if (data.data?.checkout_session) {
       return data as CheckoutResponse
+    }
+    
+    if (data.checkout_session) {
+      return { success: true, data: { checkout_session: data.checkout_session } }
     }
 
     // If response has url directly
@@ -81,11 +98,11 @@ export async function createCheckoutSession(
         success: true,
         data: {
           checkout_session: {
-            id: data.id || data.reference_code || 'unknown',
+            id: data.id || 'unknown',
             url: data.url,
             reference_code: data.reference_code || '',
-            amount: data.amount || request.amount || 0,
-            currency: data.currency || request.currency || 'USD',
+            amount: data.amount || 0,
+            currency: data.currency || 'SSP',
             expires_at: data.expires_at || '',
             payment_methods: data.payment_methods || {},
           }
