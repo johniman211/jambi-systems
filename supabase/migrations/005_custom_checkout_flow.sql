@@ -57,9 +57,40 @@ CREATE POLICY "Service can manage all confirmations"
   USING (true)
   WITH CHECK (true);
 
--- 7) Create storage bucket for payment proofs (run manually in Supabase dashboard if needed)
--- INSERT INTO storage.buckets (id, name, public) VALUES ('store-proofs', 'store-proofs', false)
--- ON CONFLICT (id) DO NOTHING;
+-- 7) Create storage bucket for payment proofs
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'store-proofs', 
+  'store-proofs', 
+  false,
+  5242880, -- 5MB limit
+  ARRAY['image/png', 'image/jpeg', 'image/webp', 'application/pdf']
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- 8) Storage policies for store-proofs bucket
+-- Drop existing policies first
+DROP POLICY IF EXISTS "Anyone can upload proofs" ON storage.objects;
+DROP POLICY IF EXISTS "Service role can read proofs" ON storage.objects;
+DROP POLICY IF EXISTS "Service role can delete proofs" ON storage.objects;
+
+-- Allow anyone to upload to store-proofs (server actions handle validation)
+CREATE POLICY "Anyone can upload proofs"
+ON storage.objects FOR INSERT
+TO anon, authenticated
+WITH CHECK (bucket_id = 'store-proofs');
+
+-- Only service role can read proofs (admin via signed URLs)
+CREATE POLICY "Service role can read proofs"
+ON storage.objects FOR SELECT
+TO service_role
+USING (bucket_id = 'store-proofs');
+
+-- Only service role can delete proofs
+CREATE POLICY "Service role can delete proofs"
+ON storage.objects FOR DELETE
+TO service_role
+USING (bucket_id = 'store-proofs');
 
 -- 8) Generate order_code for existing orders that don't have one
 UPDATE store_orders 

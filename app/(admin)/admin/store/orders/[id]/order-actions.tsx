@@ -78,10 +78,10 @@ export function OrderActions({ order }: OrderActionsProps) {
         {isPending_ && (
           <div className="space-y-2">
             <p className="text-sm text-foreground-muted mb-2">Payment Verification</p>
-            {order.payssd_reference_code && (
+            {order.order_code && (
               <div className="bg-accent/10 border border-accent/20 rounded-lg p-3 mb-3">
-                <p className="text-xs text-foreground-muted">Reference Code</p>
-                <p className="font-mono text-lg font-bold text-accent">{order.payssd_reference_code}</p>
+                <p className="text-xs text-foreground-muted">Order Code</p>
+                <p className="font-mono text-lg font-bold text-accent">{order.order_code}</p>
               </div>
             )}
             <button
