@@ -9,28 +9,37 @@ import { Upload, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
 interface PaymentConfirmationFormProps {
   orderToken: string
   orderCode: string
-  expectedAmount: number
-  currency: string
+  expectedAmountUsd: number
+  expectedAmountSsp: number
+  exchangeRate: number
 }
+
+type PaymentMethodType = 'momo' | 'equity_ssp' | 'equity_usd'
 
 export function PaymentConfirmationForm({ 
   orderToken, 
   orderCode, 
-  expectedAmount, 
-  currency 
+  expectedAmountUsd,
+  expectedAmountSsp,
+  exchangeRate
 }: PaymentConfirmationFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<{ autoApproved: boolean; message: string } | null>(null)
   
-  const [paymentMethod, setPaymentMethod] = useState<'momo' | 'equity'>('momo')
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('momo')
   const [payerPhone, setPayerPhone] = useState('')
   const [transactionReference, setTransactionReference] = useState('')
-  const [amount, setAmount] = useState(expectedAmount.toString())
   const [note, setNote] = useState('')
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
   const [uploadingReceipt, setUploadingReceipt] = useState(false)
+
+  // Get currency and expected amount based on payment method
+  const isUsdPayment = paymentMethod === 'equity_usd'
+  const currency = isUsdPayment ? 'USD' : 'SSP'
+  const expectedAmount = isUsdPayment ? expectedAmountUsd : expectedAmountSsp
+  const [amount, setAmount] = useState(expectedAmountSsp.toString())
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -65,6 +74,9 @@ export function PaymentConfirmationForm({
       setError('Phone number is required for MoMo payments')
       return
     }
+
+    // Map payment method for API
+    const apiPaymentMethod = paymentMethod === 'equity_usd' || paymentMethod === 'equity_ssp' ? 'equity' : 'momo'
     if (!amount || parseFloat(amount) <= 0) {
       setError('Please enter a valid amount')
       return
@@ -93,7 +105,7 @@ export function PaymentConfirmationForm({
         // Submit payment confirmation
         const result = await submitPaymentConfirmation({
           order_token: orderToken,
-          payment_method: paymentMethod,
+          payment_method: apiPaymentMethod,
           payer_phone: paymentMethod === 'momo' ? payerPhone : undefined,
           transaction_reference: transactionReference.trim(),
           amount: parseFloat(amount),
@@ -169,32 +181,55 @@ export function PaymentConfirmationForm({
         {/* Payment Method */}
         <div>
           <label className="block text-sm font-medium text-foreground mb-2">
-            Payment Method
+            Payment Method & Currency
           </label>
-          <div className="flex gap-3">
+          <div className="grid grid-cols-3 gap-2">
             <button
               type="button"
-              onClick={() => setPaymentMethod('momo')}
-              className={`flex-1 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-colors ${
+              onClick={() => {
+                setPaymentMethod('momo')
+                setAmount(expectedAmountSsp.toString())
+              }}
+              className={`px-3 py-3 rounded-xl border-2 text-xs sm:text-sm font-medium transition-colors ${
                 paymentMethod === 'momo'
-                  ? 'border-accent bg-accent/10 text-accent'
-                  : 'border-border text-foreground-secondary hover:border-accent/50'
+                  ? 'border-amber-500 bg-amber-50 text-amber-700'
+                  : 'border-border text-foreground-secondary hover:border-amber-300'
               }`}
             >
-              MoMo
+              MoMo (SSP)
             </button>
             <button
               type="button"
-              onClick={() => setPaymentMethod('equity')}
-              className={`flex-1 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-colors ${
-                paymentMethod === 'equity'
+              onClick={() => {
+                setPaymentMethod('equity_ssp')
+                setAmount(expectedAmountSsp.toString())
+              }}
+              className={`px-3 py-3 rounded-xl border-2 text-xs sm:text-sm font-medium transition-colors ${
+                paymentMethod === 'equity_ssp'
+                  ? 'border-green-500 bg-green-50 text-green-700'
+                  : 'border-border text-foreground-secondary hover:border-green-300'
+              }`}
+            >
+              Bank (SSP)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setPaymentMethod('equity_usd')
+                setAmount(expectedAmountUsd.toString())
+              }}
+              className={`px-3 py-3 rounded-xl border-2 text-xs sm:text-sm font-medium transition-colors ${
+                paymentMethod === 'equity_usd'
                   ? 'border-accent bg-accent/10 text-accent'
                   : 'border-border text-foreground-secondary hover:border-accent/50'
               }`}
             >
-              Equity Bank
+              Bank (USD)
             </button>
           </div>
+          <p className="text-xs text-foreground-muted mt-2">
+            Rate: 1 USD = {exchangeRate.toLocaleString()} SSP
+          </p>
         </div>
 
         {/* Payer Phone (for MoMo) */}

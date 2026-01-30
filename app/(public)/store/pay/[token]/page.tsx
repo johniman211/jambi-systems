@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { getOrderByToken } from '@/lib/store/actions'
+import { getOrderByToken, getExchangeRate } from '@/lib/store/actions'
 import { formatPrice } from '@/lib/store/types'
 import { ScrollReveal } from '@/components/ui'
 import { Clock, CheckCircle, AlertCircle, Hourglass } from 'lucide-react'
@@ -21,11 +21,19 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function PaymentPage({ params }: PageProps) {
   const { token } = await params
-  const order = await getOrderByToken(token)
+  const [order, exchangeRateData] = await Promise.all([
+    getOrderByToken(token),
+    getExchangeRate()
+  ])
 
   if (!order) {
     notFound()
   }
+
+  // Calculate amounts
+  const amountUsd = order.amount_cents / 100
+  const amountSsp = Math.round(amountUsd * exchangeRateData.ssp_to_usd)
+  const exchangeRate = exchangeRateData.ssp_to_usd
 
   // Check order status
   const isPaid = order.status === 'confirmed' || order.status === 'paid'
@@ -161,7 +169,10 @@ export default async function PaymentPage({ params }: PageProps) {
                     <div>
                       <p className="text-sm text-foreground-secondary">Amount to Pay</p>
                       <p className="text-3xl font-bold text-foreground">
-                        {formatPrice(order.amount_cents, order.currency)}
+                        ${amountUsd.toLocaleString()} <span className="text-lg text-foreground-secondary">USD</span>
+                      </p>
+                      <p className="text-sm text-foreground-muted">
+                        ≈ SSP {amountSsp.toLocaleString()}
                       </p>
                     </div>
                     <div className="text-right">
@@ -174,8 +185,9 @@ export default async function PaymentPage({ params }: PageProps) {
                 {/* Payment Instructions */}
                 <PaymentInstructions 
                   orderCode={order.order_code}
-                  amount={order.amount_cents / 100}
-                  currency={order.currency}
+                  amountUsd={amountUsd}
+                  amountSsp={amountSsp}
+                  exchangeRate={exchangeRate}
                 />
 
                 {/* Payment Confirmation Form */}
@@ -183,8 +195,9 @@ export default async function PaymentPage({ params }: PageProps) {
                   <PaymentConfirmationForm 
                     orderToken={token}
                     orderCode={order.order_code}
-                    expectedAmount={order.amount_cents / 100}
-                    currency={order.currency}
+                    expectedAmountUsd={amountUsd}
+                    expectedAmountSsp={amountSsp}
+                    exchangeRate={exchangeRate}
                   />
                 )}
 

@@ -904,3 +904,51 @@ export async function rejectPayment(orderId: string) {
   revalidatePath('/admin/store/payments')
   return { success: true }
 }
+
+// Exchange Rate Functions
+export async function getExchangeRate() {
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('store_settings')
+    .select('value')
+    .eq('key', 'exchange_rate')
+    .single()
+
+  if (error || !data) {
+    // Default rate if not set
+    return { ssp_to_usd: 5000, updated_at: new Date().toISOString() }
+  }
+
+  return data.value as { ssp_to_usd: number; updated_at: string }
+}
+
+export async function updateExchangeRate(rate: number) {
+  const adminClient = createAdminClient()
+  
+  const { error } = await adminClient
+    .from('store_settings')
+    .upsert({
+      key: 'exchange_rate',
+      value: {
+        ssp_to_usd: rate,
+        updated_at: new Date().toISOString(),
+      },
+      updated_at: new Date().toISOString(),
+    }, {
+      onConflict: 'key'
+    })
+
+  if (error) {
+    return { success: false, error: 'Failed to update exchange rate' }
+  }
+
+  revalidatePath('/admin/store/settings')
+  revalidatePath('/store')
+  return { success: true }
+}
+
+export async function convertUsdToSsp(usdCents: number): Promise<number> {
+  const rate = await getExchangeRate()
+  // Convert USD cents to SSP (multiply by rate)
+  return Math.round((usdCents / 100) * rate.ssp_to_usd)
+}
