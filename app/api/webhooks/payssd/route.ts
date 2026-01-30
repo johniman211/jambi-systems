@@ -6,48 +6,56 @@ import crypto from 'crypto'
 
 const PAYSSD_WEBHOOK_SECRET = process.env.PAYSSD_WEBHOOK_SECRET
 
-function verifySignature(payload: string, signature: string): boolean {
+function verifySignature(payload: string, timestamp: string, signature: string): boolean {
   if (!PAYSSD_WEBHOOK_SECRET) {
     console.warn('PAYSSD_WEBHOOK_SECRET not configured, skipping signature verification')
     return true
   }
 
+  // PaySSD signature format: sha256(timestamp.payload)
   const expectedSignature = crypto
     .createHmac('sha256', PAYSSD_WEBHOOK_SECRET)
-    .update(payload)
+    .update(`${timestamp}.${payload}`)
     .digest('hex')
 
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expectedSignature)
-  )
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(signature),
+      Buffer.from(expectedSignature)
+    )
+  } catch {
+    return false
+  }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const payload = await request.text()
     const signature = request.headers.get('x-payssd-signature') || ''
+    const timestamp = request.headers.get('x-payssd-timestamp') || ''
+    const event = request.headers.get('x-payssd-event') || ''
 
     // Verify webhook signature if secret is configured
-    if (PAYSSD_WEBHOOK_SECRET && !verifySignature(payload, signature)) {
+    if (PAYSSD_WEBHOOK_SECRET && !verifySignature(payload, timestamp, signature)) {
       console.error('Invalid webhook signature')
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }
 
     const data = JSON.parse(payload)
     
-    // Expected webhook payload structure from PaySSD
+    // PaySSD webhook payload structure:
     // {
-    //   event: 'payment.completed' | 'payment.failed',
-    //   reference: string, // Our order ID or provider reference
-    //   amount: number,
-    //   currency: string,
-    //   status: 'success' | 'failed',
-    //   metadata: { order_id: string }
+    //   event: 'payment.confirmed' | 'payment.created' | etc,
+    //   timestamp: string,
+    //   data: {
+    //     payment: { id, reference_code, amount, currency, status, customer_phone, customer_email },
+    //     product: { id, name },
+    //     subscription: { id, status, current_period_end }
+    //   }
     // }
 
-    const { event, reference, status, metadata } = data
-    const orderId = metadata?.order_id || reference
+    const paymentData = data.data?.payment
+    const orderId = paymentData?.metadata?.order_id || paymentData?.reference_code
 
     if (!orderId) {
       console.error('No order ID in webhook payload')
@@ -71,14 +79,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 })
     }
 
-    // Handle payment events
-    if (event === 'payment.completed' && status === 'success') {
+    // Handle payment events based on PaySSD event types
+    if (event === 'payment.confirmed') {
       // Update order status to paid
       const { error: updateError } = await supabase
         .from('store_orders')
         .update({
           status: 'paid',
-          provider_reference: reference,
+          provider_reference: paymentData?.id || paymentData?.reference_code,
           paid_at: new Date().toISOString(),
         })
         .eq('id', orderId)
@@ -167,13 +175,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, message: 'Payment processed' })
     }
 
-    if (event === 'payment.failed' || status === 'failed') {
+    if (event === 'payment.failed' || paymentData?.status === 'failed') {
       // Update order status to failed
       const { error: updateError } = await supabase
         .from('store_orders')
         .update({
           status: 'failed',
-          provider_reference: reference,
+          provider_reference: paymentData?.id || paymentData?.reference_code,
         })
         .eq('id', orderId)
 

@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { checkoutSchema, type CheckoutInput, productSchema, type ProductInput, deployRequestSchema, type DeployRequestInput } from './validations'
 import { calculateTotal, generateOrderToken, generateLicenseKey, type StoreProduct, type StoreOrder, type OrderWithDetails } from './types'
 import { sendStoreEmail } from '@/lib/email/store-emails'
+import { createCheckoutSession } from '@/lib/payssd/client'
 
 export async function getPublishedProducts() {
   const supabase = await createClient()
@@ -81,10 +82,45 @@ export async function createOrder(input: CheckoutInput) {
     return { success: false, error: 'Failed to create order' }
   }
 
+  // Create PaySSD checkout session
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jambisystems.com'
+  const checkoutResult = await createCheckoutSession({
+    amount: totalCents,
+    currency: product.currency,
+    customer_phone: validated.data.buyer_phone,
+    customer_email: validated.data.buyer_email,
+    success_url: `${siteUrl}/store/success?token=${orderToken}`,
+    cancel_url: `${siteUrl}/store/checkout/${product.slug}`,
+    metadata: {
+      order_id: order.id,
+    },
+  })
+
+  if (!checkoutResult.success || !checkoutResult.data) {
+    // Order created but PaySSD failed - still return order token for manual payment
+    console.error('PaySSD checkout error:', checkoutResult.error)
+    return {
+      success: true,
+      order: order as StoreOrder,
+      orderToken,
+      checkoutUrl: null,
+      paymentError: checkoutResult.error,
+    }
+  }
+
+  // Update order with PaySSD reference
+  await supabase
+    .from('store_orders')
+    .update({
+      provider_reference: checkoutResult.data.checkout_session.id,
+    })
+    .eq('id', order.id)
+
   return {
     success: true,
     order: order as StoreOrder,
     orderToken,
+    checkoutUrl: checkoutResult.data.checkout_session.url,
   }
 }
 

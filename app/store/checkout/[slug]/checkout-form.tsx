@@ -43,10 +43,13 @@ export function CheckoutForm({ product }: CheckoutFormProps) {
         return
       }
 
-      // Redirect to PaySSD or success page
-      // For now, redirect to success page with order token
-      // In production, this would redirect to PaySSD checkout
-      router.push(`/store/success?token=${result.orderToken}`)
+      // Redirect to PaySSD checkout if URL available
+      if (result.checkoutUrl) {
+        window.location.href = result.checkoutUrl
+      } else {
+        // Fallback to success page if PaySSD unavailable (order still created)
+        router.push(`/store/success?token=${result.orderToken}`)
+      }
     })
   }
 
