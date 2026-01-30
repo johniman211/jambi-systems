@@ -39,6 +39,7 @@ export interface StoreOrder {
   status: OrderStatus
   payment_provider: string
   provider_reference: string | null
+  payssd_checkout_url: string | null
   order_access_token: string
   paid_at: string | null
   created_at: string

@@ -109,11 +109,12 @@ export async function createOrder(input: CheckoutInput) {
     }
   }
 
-  // Update order with PaySSD reference
+  // Update order with PaySSD reference and checkout URL
   await supabase
     .from('store_orders')
     .update({
       provider_reference: checkoutResult.data.checkout_session.id,
+      payssd_checkout_url: checkoutResult.data.checkout_session.url,
     })
     .eq('id', order.id)
 
