@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -15,6 +16,8 @@ import {
   LogOut,
   ExternalLink,
   CreditCard,
+  Menu,
+  X,
 } from 'lucide-react'
 
 interface AdminSidebarProps {
@@ -52,6 +55,7 @@ export function AdminSidebar({ userEmail }: AdminSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   const isActive = (href: string, exact?: boolean) => {
     if (exact) {
@@ -66,8 +70,8 @@ export function AdminSidebar({ userEmail }: AdminSidebarProps) {
     router.refresh()
   }
 
-  return (
-    <aside className="w-64 min-h-screen bg-white border-r border-primary-200 flex flex-col">
+  const sidebarContent = (
+    <>
       {/* Header */}
       <div className="p-4 border-b border-primary-100">
         <Link href="/admin" className="flex items-center gap-2">
@@ -93,6 +97,7 @@ export function AdminSidebar({ userEmail }: AdminSidebarProps) {
                   <li key={link.href}>
                     <Link
                       href={link.href}
+                      onClick={() => setIsMobileMenuOpen(false)}
                       className={cn(
                         'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
                         active
@@ -145,6 +150,47 @@ export function AdminSidebar({ userEmail }: AdminSidebarProps) {
           Sign Out
         </button>
       </div>
-    </aside>
+    </>
+  )
+
+  return (
+    <>
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setIsMobileMenuOpen(true)}
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-md border border-primary-200"
+      >
+        <Menu className="w-6 h-6 text-primary-900" />
+      </button>
+
+      {/* Mobile Overlay */}
+      {isMobileMenuOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/50 z-40"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Mobile Sidebar */}
+      <aside
+        className={cn(
+          'lg:hidden fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-primary-200 flex flex-col transform transition-transform duration-300 ease-in-out',
+          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
+        <button
+          onClick={() => setIsMobileMenuOpen(false)}
+          className="absolute top-4 right-4 p-1 text-primary-600 hover:text-primary-900"
+        >
+          <X className="w-5 h-5" />
+        </button>
+        {sidebarContent}
+      </aside>
+
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex w-64 min-h-screen bg-white border-r border-primary-200 flex-col">
+        {sidebarContent}
+      </aside>
+    </>
   )
 }
